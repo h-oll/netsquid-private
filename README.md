@@ -4,5 +4,5 @@
 # Quantum Key Distribution
 ## BB84
 
-#Quantum Money
+# Quantum Money
 ## Quantum Token
