@@ -1,60 +1,70 @@
+#!/usr/bin/env python
+# coding: utf-8
 
+# In[36]:
 
 
 import numpy as np
 import netsquid as ns
 from netsquid.nodes.node import Node
-from netsquid.components import QuantumMemory, DepolarNoiseModel
+from netsquid.protocols import Protocol
+from netsquid.components import QuantumMemory, DepolarNoiseModel #,DephaseNoiseModel
 from netsquid.qubits import create_qubits
+from netsquid.pydynaa import Entity,EventHandler,EventType
+from netsquid.components.component import Component
 from netsquid.qubits.qformalism import *
 
 
+# In[37]:
 
 
-
-class QMemoryTest():
+class QMemoryDelay(Protocol):
     
     
-    def init(self,num_bits=8,depolar_rate=0,timeIND=False,waitTime=5):
+    # base functions =======================================================
+    def __init__(self,num_bits=1,depolar_rate=0,timeIND=False,delay=0): 
+        super().__init__()
         set_qstate_formalism(QFormalism.DM)
-        self.node_A = Node("A",ID=0)
-        #apply quantum memory and Depolar Noise Model
-        self.A_memory = QuantumMemory("QMemory_A", num_bits,ID=0, 
+        self.my_memory = QuantumMemory("QMemory", num_bits,ID=0, 
             memory_noise_models=DepolarNoiseModel(depolar_rate=depolar_rate,
-            time_independent=timeIND))
-        self.node_A.add_subcomponent(self.A_memory)
+            time_independent=timeIND))     
         self.num_bits=num_bits
-        self.waitTime=waitTime
-        self.qList=None
-        return(self.start())
-    
-
-    
-    def CompareQubits(self,qubit):
-        #print(float(qubit.qstate.dm[1][1]))
-        return float(qubit.qstate.dm[1][1])
-
+        self.delay=delay
+        self.qList=[]
+        self.start()
         
+        
+        
+    def stop(self):
+        super().stop()
+        self._running = False
+        
+    def is_connected(self):
+        super().is_connected()
+        pass
+        
+    
     def start(self):
+        super().start()
+        self.qList = create_qubits(num_bits,system_name="Q")
+        self.my_memory.put(self.qList) 
         
-        self.qList = create_qubits(self.num_bits,system_name="Q") 
         
-        self.A_memory.put(self.qList)
+        My_waitENVtype = EventType("WAIT_EVENT", "Wait for N nanoseconds")
+        self._schedule_after(self.delay, My_waitENVtype) # self.delay
+        self._wait_once(ns.EventHandler(self.popMem),entity=self
+            ,event_type=My_waitENVtype) # can't add event_type
         
-        # put
-        ns.sim_run(duration=self.waitTime,magnitude=ns.MICROSECOND)  
-        
-        # pop            
-        self.qList=self.A_memory.pop(list(np.arange(self.num_bits)))
-        
-        err_rate=self.CompareQubits(self.qList[0])
-        
-        if self.num_bits!=0:
-            return err_rate   
-        else:
-            return 0
+    
+    # my functions ============================================
+    def popMem(self,event):
+        #print("time: ",ns.sim_time())
+        # pop out from qmem
+        self.qList=self.my_memory.pop(list(np.arange(self.num_bits)))
+         
 
 
+# In[38]:
 
 
 import matplotlib.pyplot as plt
@@ -62,41 +72,45 @@ import matplotlib.pyplot as plt
 def QuantumMem_plot():
     x_axis=[]
     y_axis=[]
-    run_times=1
     num_bits=1
     timeIND=False
-    waitTime=0
-    depolar_rate=1000
-    
-    
     min_time=0
-    max_time=7000
+    max_time=7000000 #ns
     
-    ns.sim_reset()
     
     
     #first line
-    for i in range(min_time,max_time,50):
+    
+    depolar_rate=1000
+    
+    for i in range(min_time,max_time,50000):
+        ns.sim_reset()
+        x_axis.append(i/1000)
+        Qt=QMemoryDelay(num_bits=num_bits,depolar_rate=depolar_rate,delay=i)
         
-        x_axis.append(i)
-        y_axis.append(QMemoryTest().init(num_bits=num_bits
-            ,depolar_rate=depolar_rate,timeIND=timeIND,waitTime=i))
+        ns.sim_run()
+        y_axis.append(Qt.qList[0].qstate.dm[1][1].real) # only take the first qubit from DM 
+        # and take the probability of bit flip
      
-        
+    
     plt.plot(x_axis, y_axis, 'go-',label='depolar rate = 1000')
     
     
     
     #second line
+    
     x_axis.clear()
     y_axis.clear()
     depolar_rate=500
     
-    for i in range(min_time,max_time,50):
+    for i in range(min_time,max_time,50000):
+        ns.sim_reset()
+        x_axis.append(i/1000)
+        Qt2=QMemoryDelay(num_bits=num_bits,depolar_rate=depolar_rate,delay=i)
+        ns.sim_run()
+        y_axis.append(Qt2.qList[0].qstate.dm[1][1].real)
         
-        x_axis.append(i)
-        y_axis.append(QMemoryTest().init(num_bits=num_bits
-            ,depolar_rate=depolar_rate,timeIND=timeIND,waitTime=i))
+        
         
     plt.plot(x_axis, y_axis, 'bo-',label='depolar rate = 500')
     
@@ -107,13 +121,12 @@ def QuantumMem_plot():
     y_axis.clear()
     depolar_rate=50
     
-    for i in range(min_time,max_time,50):
-        
-        x_axis.append(i)
-        y_axis.append(QMemoryTest().init(num_bits=num_bits
-            ,depolar_rate=depolar_rate,timeIND=timeIND,waitTime=i))
-        
-    ns.sim_run()
+    for i in range(min_time,max_time,50000):
+        ns.sim_reset()
+        x_axis.append(i/1000)
+        Qt3=QMemoryDelay(num_bits=num_bits,depolar_rate=depolar_rate,delay=i)
+        ns.sim_run()
+        y_axis.append(Qt3.qList[0].qstate.dm[1][1].real)
     
     
     plt.plot(x_axis, y_axis, 'ro-',label='depolar rate = 50')
@@ -125,7 +138,7 @@ def QuantumMem_plot():
     plt.xlabel('time stayed in quantum memory (μs)')
 
     plt.legend()
-    plt.savefig('QMem7.png')
+    plt.savefig('QMem.png')
     plt.show()
 
 
@@ -133,6 +146,7 @@ def QuantumMem_plot():
 QuantumMem_plot()
 
 
+# In[ ]:
 
 
 
