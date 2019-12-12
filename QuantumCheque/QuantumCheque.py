@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[66]:
+# In[1]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ from netsquid.pydynaa import Entity,EventHandler,EventType
 from random import seed, randint
 
 
-# In[67]:
+# In[2]:
 
 
 def Create_GHZ_triple_qubits_list(num_qubits=8):
@@ -37,9 +37,6 @@ def Create_GHZ_triple_qubits_list(num_qubits=8):
         qListA2.append(qList[2])
 
     return qListB,qListA1,qListA2
-
-
-
 
 
 
@@ -125,7 +122,7 @@ def SwapTest(qB,qC):
 
 
 
-# In[68]:
+# In[3]:
 
 
 class QuantumCheque(Protocol):
@@ -219,7 +216,7 @@ class QuantumCheque(Protocol):
         self.C_Qmemory.put(chequeQList) 
         
         # wait for some time before summit to bank
-        print("wait for ",self.C_delay, " ns")
+        #print("wait for ",self.C_delay, " ns")
         My_waitENVtype = EventType("WAIT_EVENT", "Wait for N nanoseconds")
         self._schedule_after(self.C_delay, My_waitENVtype) # self.delay
         self._wait_once(ns.EventHandler(self.CpopMem),entity=self
@@ -251,7 +248,8 @@ class QuantumCheque(Protocol):
             if bob_measurement[0] == 1:
                 Z | chequeQList[i]
                 
-        test_var = input("Use a fake check? (y/n)") #'n'#
+        # to use a fake cheque or not
+        test_var = 'n'  # input("Use a fake check? (y/n)")
         res_closeness=[]
         
         for i in range(self.num_bits):
@@ -276,10 +274,12 @@ class QuantumCheque(Protocol):
         
         if self.chequeCloseness>self.Threshold:
             # pass
-            print('Verified! Cheque Accepted!')
+            self.Varify=True
+            #print('Verified! Cheque Accepted!')
         else:
             # fail
-            print('FAILED! ABORTING!' )
+            self.Varify=False
+            #print('FAILED! ABORTING!' )
     
     
     
@@ -325,6 +325,7 @@ class QuantumCheque(Protocol):
         self.Money = Money
         self.Threshold = Threshold #Threshold of closeness about whether to accept this cheque
         self.chequeCloseness = 0
+        self.Varify = False # True = cheque accepted, False = cheque denied
         
         self.start()
         
@@ -392,14 +393,72 @@ class QuantumCheque(Protocol):
         
 
 
-# In[69]:
+# In[4]:
 
 
-ns.sim_reset()
-qc=QuantumCheque(num_bits=10,C_delay=10**11,Money=110)#10**9
+def sim(run_times=1,delay=0,depolar_rate=0):
+    closeness_List=[]
+    for i in range(run_times):
+        ns.sim_reset()
+        qc=QuantumCheque(num_bits=10,C_delay=delay,Money=110,depolar_rate=depolar_rate)
+        ns.sim_run()
+        #print(qc.chequeCloseness)
+        closeness_List.append(qc.chequeCloseness)
 
-ns.sim_run()
-print("transfered Money: ",qc.Money)
-print(qc.chequeCloseness)
+    return sum(closeness_List)/len(closeness_List)
 
+#sim(2,10**10)
+
+
+# In[10]:
+
+
+#===========================================plot======================================================
+import matplotlib.pyplot as plt
+
+def QC_plot():
+    y_axis=[]
+    x_axis=[]
+    run_times=50
+    num_bits=10
+    min_delay=0
+    max_delay=5*10**7 #86400s = a day
+    
+    depolar_rate=100
+
+    
+    #first line
+    for i in range(min_delay,max_delay,5*10**6):    #i in ns
+        x_axis.append(i)
+        y_axis.append(sim(run_times,i,depolar_rate))
+        
+        
+        
+    plt.plot(x_axis, y_axis, 'go-',label='depolar_rate = 100')
+    
+    
+    # second line
+    x_axis.clear()
+    y_axis.clear()
+    depolar_rate=50
+    for i in range(min_delay,max_delay,5*10**6):  
+        x_axis.append(i)
+        y_axis.append(sim(run_times,i,depolar_rate))
+    
+    plt.plot(x_axis, y_axis, 'bo-',label='depolar_rate = 50')
+    
+
+        
+    plt.ylabel('average cheque closeness')
+    plt.xlabel('time wait in C (ns)')
+
+    
+    #plt.xscale('log')
+    plt.legend()
+    plt.savefig('plot.png')
+    plt.show()
+
+    
+
+QC_plot()
 
