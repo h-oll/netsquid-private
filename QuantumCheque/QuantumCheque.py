@@ -403,20 +403,3 @@ print("transfered Money: ",qc.Money)
 print(qc.chequeCloseness)
 
 
-# In[5]:
-
-
-def run_QuantumCheque_sim(run_times=1):
-    
-    
-    QuantumChequeList=[]
-    for i in range(run_times): 
-        
-        ns.sim_reset()
-        print("The ",i,"th run...")
-        QuantumChequeList.append(QuantumCheque(num_bits=20).key_BB84_B)
-        ns.sim_run()
-    
-    
-    return QuantumChequeList
-
