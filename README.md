@@ -28,6 +28,7 @@ The code is divided into blocks, each block defines functions related to their b
   Every new protocol has to be declared as a class and inherit "Protocol" class definition in NetSquid.
 
   - **Operation functions**
+  
     Functions that are used by the current protocol itself. They are customized to this particular protocol.
 
   - **Base functions**
