@@ -8,10 +8,9 @@ Here are list of quantum protocol simulations made by NetSquid.
 This part means to help readers understand the code.
 
 First of all, my code structure might not be the best one, I am open to discuss about it.
-All protocols follows the same code structure shown below: 
+All protocols follows the same code structure shown below:
 
-![NsProtocolCodeStructure](https://github.com/h-oll/netsquid-private/NsProtocolCodeStructure.png)
-
+![NsProtocolCodeStructure](https://github.com/h-oll/netsquid-private/blob/master/NsProtocolCodeStructure.png)
 
 # Quantum Protocol List
 ## Quantum Key Distribution
@@ -27,5 +26,5 @@ All protocols follows the same code structure shown below:
 
 
 ## Contact
-ChinTe Liao 
+ChinTe Liao
 liao.chinte@veriqloud.fr
