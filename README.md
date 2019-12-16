@@ -69,12 +69,14 @@ The code is divided into blocks, each block defines functions related to their b
 - BB84
 
 
-
-
 ## Quantum Money
 - Quantum Token
-- Quantum Check
+- Quantum Cheque
 
+
+## Others
+- Quantum Memory
+- NetSquid Library
 
 
 ## Contact
