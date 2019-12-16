@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
+# This file is used for collecting reusable functions between protocols.
 
 # In[16]:
 
