@@ -1,7 +1,7 @@
-# How to run
-1. Copy **../BB84/BB84_v1_5.py** into current directory
-2. Configure your simulation in function **QC_plot**
-3. Run:
+# How to run simulation
+1. Update BB84 file to **../BB84/BB84.py** into current directory if not done already.
+2. Configure your simulation only in function **QC_plot**.
+3. Run the python script in terminal:
 ```
 python QuantumCheque.py
 ```
