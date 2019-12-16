@@ -1,13 +1,7 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import numpy as np
 import netsquid as ns
 from netsquid.nodes.node import Node
-from BB84_lib_v1_5 import *
+from BB84 import *
 from netsquid.qubits import ketstates
 from netsquid.qubits.operators import *
 from netsquid.qubits.qubitapi import *
@@ -15,12 +9,10 @@ from netsquid.qubits import operators as ops
 from netsquid.components import QuantumMemory, DepolarNoiseModel
 from netsquid.pydynaa import Entity,EventHandler,EventType
 
-from random import seed, randint
+from random import randint
 
 
-# In[2]:
-
-
+# Generate 3 sets of  qubits lists and entangle them 3 by 3
 def Create_GHZ_triple_qubits_list(num_qubits=8):
     qListB=[]
     qListA1=[]
@@ -39,11 +31,10 @@ def Create_GHZ_triple_qubits_list(num_qubits=8):
     return qListB,qListA1,qListA2
 
 
-
-def UniqueSerialNumGen(num_bits):
-    seed() 
+# Generate a random serial number list.
+def UniqueSerialNumGen(num_bits,min,max):
     bitList=[]
-    startUSN=randint(0,1000)
+    startUSN=randint(min,max-num_bits+1)
     for i in range(num_bits):
         bitList.append(startUSN)
         startUSN+=1
@@ -51,7 +42,8 @@ def UniqueSerialNumGen(num_bits):
 
 
 
-# hash with the symmetric key, Unique Serial Number, the amound of money
+# hash with the symmetric key, Unique Serial Number and the amound of money
+# returns a qubit by hashed data
 def OneWayFunction(identity=None,symkey=[],randomSerialNumber=0,Money=0):
     owf_key=''
     for i in symkey:
@@ -62,7 +54,7 @@ def OneWayFunction(identity=None,symkey=[],randomSerialNumber=0,Money=0):
     owf_key=int(owf_key)
     
     # make it qubit
-    # apply three prime numbers
+    # apply three prime numbers(flexible)
     p1 = 33179
     p2 = 32537
     p3 = 31259
@@ -77,7 +69,6 @@ def OneWayFunction(identity=None,symkey=[],randomSerialNumber=0,Money=0):
     MyRy | tempQubit
     MyRz | tempQubit
     
-    #print(tempQubit.qstate.dm)
     return tempQubit
     
     
@@ -86,9 +77,7 @@ def OneWayFunction(identity=None,symkey=[],randomSerialNumber=0,Money=0):
 # C swap can be composed by T
 # https://www.mathstat.dal.ca/~selinger/quipper/doc/QuipperLib-GateDecompositions.html
 def Cswap(qA,qB,qC):
-    
     invT=T.inv
-    
     operate([qC, qB], ops.CNOT)
     H | qC
     T | qA
@@ -111,6 +100,9 @@ def Cswap(qA,qB,qC):
 
 
 
+# Swap test which exames the closeness of two qubits.
+# (0,0.5) means orthogonal.
+# (0,1)   means the two are equal.
 def SwapTest(qB,qC):
     qA=create_qubits(1)
     qA=qA[0]
@@ -122,17 +114,11 @@ def SwapTest(qB,qC):
 
 
 
-# In[3]:
-
-
 class QuantumCheque(Protocol):
-  
-
     # QuantumCheque function =========================================================
 
     def BA_BB84_keygen(self,num_bits=8,fibre_len=10**-6,
                  fibre_loss_init=0,fibre_loss_length=0):
-        #print("BA_BB84_keygen")
         loc_BB84=BB84(num_bits=num_bits,fibre_len=fibre_len,
             fibre_loss_init=fibre_loss_init,fibre_loss_length=fibre_loss_init)
         # assign keys to A and B
@@ -144,7 +130,6 @@ class QuantumCheque(Protocol):
         
         
     def B_send_GHZ(self,username):
-        #print("B_send_GHZ called")
         if username.items[0]=='Alice':
             self.BChequeBook,tmpAChequeBook,tmpA2ChequeBook=Create_GHZ_triple_qubits_list(self.num_bits)
             tmpAChequeBook.extend(tmpA2ChequeBook)
@@ -163,27 +148,23 @@ class QuantumCheque(Protocol):
         
     
     def B_USN_send_A(self,req): 
-        #print("B_USN_send_A called")
-        self.B_saveUSN=UniqueSerialNumGen(self.num_bits)
-        #print(self.B_saveUSN)
+        self.B_saveUSN=UniqueSerialNumGen(self.num_bits,0,1000) #min max value flexible (doesn't matter actually)
         self.node_B.ports["portC_B3"].tx_output(self.B_saveUSN)
         
         
         
         
     def A_owf_send_C(self,saveUSN):
-        #print("A_owf_send_C called")
         self.A_saveUSN=saveUSN.items
         if len(self.A1ChequeBook) < self.num_bits:
             print("No more cheque! Aborting!")
             return 0
         else:
             for i in range(self.num_bits):
-                
                 # Alice write down the amound of money 
                 res_owf_qubit=OneWayFunction('Alice',self.key_BB84_A
                     ,self.A_saveUSN[i],self.Money)
-                
+
                 # Alice performs Bell state measurement
                 operate([res_owf_qubit, self.A1ChequeBook[i]], ops.CNOT)     
                 H | res_owf_qubit
@@ -201,7 +182,6 @@ class QuantumCheque(Protocol):
                 if mes_A1[0] == 1   and mes_owf_qubit[0] == 1:
                     Y | self.A2ChequeBook[i]
 
-
         self.node_A.ports["portQ_A2"].tx_output(self.A2ChequeBook)
 
 
@@ -210,46 +190,39 @@ class QuantumCheque(Protocol):
     
     # C receives qubits from A then wait and send to B 
     def C_rec_wait_send_B(self,chequeQList):
-        #print("C_rec_wait_send called")
         chequeQList=chequeQList.items
-        
         self.C_Qmemory.put(chequeQList) 
-        
         # wait for some time before summit to bank
-        #print("wait for ",self.C_delay, " ns")
         My_waitENVtype = EventType("WAIT_EVENT", "Wait for N nanoseconds")
-        self._schedule_after(self.C_delay, My_waitENVtype) # self.delay
+        self._schedule_after(self.C_delay, My_waitENVtype) 
         self._wait_once(ns.EventHandler(self.CpopMem),entity=self
             ,event_type=My_waitENVtype) # can't add event_type
         
     
     # pop qubits from qMemory
     def CpopMem(self,event):
-        #print("time: ",ns.sim_time())
         # pop out from qmem
         sening_qList=[]
         sening_qList=self.C_Qmemory.pop(list(np.arange(self.num_bits))) #pop all
-        #print("poped from Qmem:",sening_qList)
         self.node_C.ports["portQ_C2"].tx_output(sening_qList)
         
         
         
-    # a list of qubits is verified by bank
+    # B varifies the list given by C
     def CB_Verify(self,chequeQList):
-        #print("CB_Verify called")
         chequeQList=chequeQList.items
         
         # error correction
         for i in range(self.num_bits):
             H | self.BChequeBook[i]
             bob_measurement = ns.qubits.qubitapi.measure(self.BChequeBook[i]
-                        ,observable=Z)
-            #print("bob_measurement=",bob_measurement)                  
+                        ,observable=Z)                
             if bob_measurement[0] == 1:
                 Z | chequeQList[i]
                 
-        # to use a fake cheque or not
-        test_var = 'n'  # input("Use a fake check? (y/n)")
+        
+        # For experiment
+        test_var = 'n'  # input("Use a fake check? (y/n)") # To use a fake cheque or not
         res_closeness=[]
         
         for i in range(self.num_bits):
@@ -261,16 +234,14 @@ class QuantumCheque(Protocol):
             res_closeness.append(SwapTest(owf_bank_state, chequeQList[i]))
         
         sum=0
-        #print('Resulting array of SWAP test: ', res_closeness )
+
         for i in range(len(res_closeness)):
             if int(res_closeness[i][0])==0:
                 sum+=res_closeness[i][1]
             else:
                 sum+=1-res_closeness[i][1]
                 
-                
-        self.chequeCloseness=sum/len(res_closeness)
-        #print(self.chequeCloseness)
+        self.chequeCloseness=sum/len(res_closeness) # get average closeness value
         
         if self.chequeCloseness>self.Threshold:
             # pass
@@ -393,24 +364,17 @@ class QuantumCheque(Protocol):
         
 
 
-# In[4]:
-
-
-def sim(run_times=1,delay=0,depolar_rate=0):
+# Run the protocol several times
+def Sim(run_times=1,delay=0,depolar_rate=0):
     closeness_List=[]
     for i in range(run_times):
         ns.sim_reset()
-        qc=QuantumCheque(num_bits=10,C_delay=delay,Money=110,depolar_rate=depolar_rate)
+        qc=QuantumCheque(num_bits=10,C_delay=delay,Money=110,depolar_rate=depolar_rate) # given arbitrary money value 
         ns.sim_run()
-        #print(qc.chequeCloseness)
         closeness_List.append(qc.chequeCloseness)
 
     return sum(closeness_List)/len(closeness_List)
 
-#sim(2,10**10)
-
-
-# In[10]:
 
 
 #===========================================plot======================================================
@@ -422,28 +386,28 @@ def QC_plot():
     run_times=50
     num_bits=10
     min_delay=0
-    max_delay=5*10**7 #86400s = a day
+    max_delay=5*10**7 
     
     depolar_rate=100
 
     
-    #first line
+    #first curve
     for i in range(min_delay,max_delay,5*10**6):    #i in ns
         x_axis.append(i)
-        y_axis.append(sim(run_times,i,depolar_rate))
+        y_axis.append(Sim(run_times,i,depolar_rate))
         
         
         
     plt.plot(x_axis, y_axis, 'go-',label='depolar_rate = 100')
     
     
-    # second line
+    # second curve
     x_axis.clear()
     y_axis.clear()
     depolar_rate=50
     for i in range(min_delay,max_delay,5*10**6):  
         x_axis.append(i)
-        y_axis.append(sim(run_times,i,depolar_rate))
+        y_axis.append(Sim(run_times,i,depolar_rate))
     
     plt.plot(x_axis, y_axis, 'bo-',label='depolar_rate = 50')
     
@@ -453,7 +417,6 @@ def QC_plot():
     plt.xlabel('time wait in C (ns)')
 
     
-    #plt.xscale('log')
     plt.legend()
     plt.savefig('plot.png')
     plt.show()
