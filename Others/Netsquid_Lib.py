@@ -4,6 +4,7 @@
 # In[16]:
 
 
+import numpy as np
 import netsquid as ns
 from netsquid.qubits.qubitapi import *
 
@@ -35,13 +36,21 @@ def Create_GHZ_set_list(num_qubits,num_sets):
     return qList_2D
 
 
-# In[17]:
+# In[1]:
 
 
 #Verify
+
 from netsquid.qubits.operators import *
 tmp=Create_GHZ_set_list(5,3)
 print(tmp)
+
+np.asarray(tmp)
+print(tmp)
+print(tmp[:,2])
+
+
+
 mes0=ns.qubits.qubitapi.measure(tmp[2][0],observable=Z)
 mes1=ns.qubits.qubitapi.measure(tmp[2][1],observable=Z) 
 mes2=ns.qubits.qubitapi.measure(tmp[2][2],observable=Z) 
@@ -85,7 +94,7 @@ def SerialNumGen(num_bits,min,max):
 SerialNumGen(7,0,10)
 
 
-# In[ ]:
+# In[12]:
 
 
 '''
@@ -98,6 +107,10 @@ input:
 output:
     A qubit in this case.
 '''
+
+from netsquid.qubits import create_qubits
+from netsquid.qubits.operators import *
+
 # hash with the symmetric key, Unique Serial Number, the amound of money
 def OneWayFunction(identity=None,symkey=[],randomSerialNumber=0,Money=0):
     owf_key=''
@@ -132,8 +145,17 @@ def OneWayFunction(identity=None,symkey=[],randomSerialNumber=0,Money=0):
 # In[ ]:
 
 
-# C swap can be composed by T
-# https://www.mathstat.dal.ca/~selinger/quipper/doc/QuipperLib-GateDecompositions.html
+'''
+function:
+    Cswap function.
+input:
+    Three qubits.
+output:
+    Three qubits applied Cswap.
+'''
+# C swap can be composed by T,H
+# see https://www.mathstat.dal.ca/~selinger/quipper/doc/QuipperLib-GateDecompositions.html
+from netsquid.qubits.operators import H,T
 def Cswap(qA,qB,qC):
     
     invT=T.inv
@@ -159,7 +181,7 @@ def Cswap(qA,qB,qC):
     return qA,qB,qC
 
 
-# In[ ]:
+# In[11]:
 
 
 '''
@@ -174,7 +196,8 @@ output:
     (0,0.5) means orthogonal.
     (0,1)   means the two are equal.
 '''
-
+from netsquid.qubits import create_qubits
+from netsquid.qubits.operators import H,Z
 
 def SwapTest(qB,qC):
     qA=create_qubits(1)
@@ -183,4 +206,105 @@ def SwapTest(qB,qC):
     Cswap(qA,qB,qC)
     H | qA
     return ns.qubits.qubitapi.measure(qA,observable=Z)
+
+
+# In[9]:
+
+
+'''
+function:
+    Create qubits list.
+
+input:
+    numbers of qubits.
+
+output:
+    A list of quantum states.(0,1,+,-)
+    And corespond quantum list.
+'''
+
+from netsquid.qubits import create_qubits
+from random import randint
+from netsquid.qubits.operators import H,X
+
+def Create_random_qubits(num_bits):
+    res_state=[]
+    qlist=[]
+    qlist=create_qubits(num_bits) 
+    for i in range(0,num_bits):
+        res_state.append(randint(0,3)) # in four states
+    for a,b in zip(res_state, qlist):
+        if   a == 0: # 0 state
+            pass
+        elif a == 1: # 1 state    #X
+            X | b
+        elif a == 2: # + state    #H
+            H | b
+        elif a == 3: # - state    #XH
+            X | b
+            H | b
+        else :
+            print("Create random bits ERROR!!")
+    return res_state, qlist
+
+
+# In[13]:
+
+
+'''
+function:
+    Measuring qubits according to certain basis.
+    Names of qubits need to be indexed from 0
+
+input:
+    A list of basis consised by 0/1. (0:standard, 1:Hadamard)
+    A list of qubits.
+
+output:
+    A list of measurment tuple accordingly. Return merely 0 means missing such qubits
+'''
+
+import netsquid as ns
+
+def Measure_by_basis(basisList,qList):
+    if len(basisList)<len(qList): 
+        print("Quantum list is too long! ERROR!!")
+        return 0
+    else:
+        res_measurement=[0]*len(basisList) #init to 0
+        
+        for q in qList:
+            pos=int(q.name[5:]) #get qubit index #defalt first qubit name = QS#0-0
+            if basisList[pos]==0:
+                res_measurement[pos]=ns.qubits.qubitapi.measure(q,observable=Z) #measure in standard basis
+            elif basisList[a]==1:
+                res_measurement[pos]=ns.qubits.qubitapi.measure(q,observable=X) #measure in Hadamard basis
+            else:
+                print("measuring ERROR!!\n")    
+        return res_measurement
+
+
+# In[ ]:
+
+
+'''
+function:
+    Wait certain amout of simulated time in simulation 
+    This is the way NetSquid implements waiting action in simulated time.
+    By customizing a wait event, it will call End_waiting function after waiting.
+    More example at https://github.com/h-oll/netsquid-private/blob/master/Others/QMemory/QMemoryNoiceSim.py
+'''
+class example_class():
+    
+    def example_function:
+        # Put folowing lines in functions you want to wait.
+        My_waitENVtype = EventType("WAIT_EVENT", "Wait for N nanoseconds")
+        self._schedule_after(customized_delay, My_waitENVtype) # customized_delay
+        self._wait_once(ns.EventHandler(self.End_waiting),entity=self,event_type=My_waitENVtype) 
+        # Put above lines in functions you want to wait.
+        
+    # called after qaiting
+    def End_waiting(self,event):
+        #continue your protocol
+         
 
