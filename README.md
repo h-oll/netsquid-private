@@ -55,11 +55,11 @@ The code is divided into blocks, each block defines functions related to their b
         - trigger of the starting function
 
 
-4. **Implement function**
+4. **Implement function** -opt
 
   A function used to call above protocol. It is used to run the same protocol several times, then get average value of certain attribute of the protocol for statistical use.
 
-5. **Plot Function**
+5. **Plot Function** -opt
 
   A function to plot statistical results of above protocol.
 
@@ -67,6 +67,7 @@ The code is divided into blocks, each block defines functions related to their b
 # Quantum Protocol List
 ## Quantum Key Distribution
 - BB84
+- E91/Ekert/EPR
 
 
 ## Quantum Money
