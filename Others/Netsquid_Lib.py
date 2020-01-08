@@ -308,3 +308,254 @@ class example_class():
         #continue your protocol
          
 
+
+# In[ ]:
+
+
+'''
+Assuming that qubit flip happens less likely than not flipping.
+Correct qubit according to majority without measuring them.
+
+input: 
+    Qubit lists to compare and correct when qubit flips.
+    Idealy Qlist1=Qlist2=Qlist3.
+    Same column in different Qlist will be corrected accoring to majority.
+output:
+    Corrected Qubit list
+
+'''
+
+import numpy as np
+import netsquid as ns
+from netsquid.qubits import create_qubits
+from netsquid.qubits.operators import *
+
+def QBitCorrection(Qlist1,Qlist2,Qlist3):
+    ret=[]
+    for q1,q2,q3 in zip(Qlist1,Qlist2,Qlist3):
+        Qlist=[q1,q2,q3]
+    
+    
+        # Qlist
+        # get Error Syndrome
+        ErrorSyndromeLen=len(Qlist)-1
+        ES_Qlist=create_qubits(ErrorSyndromeLen)
+        #print(ES_Qlist)
+        mes=[]
+        for i in range(ErrorSyndromeLen):
+            ns.qubits.operate([Qlist[i],ES_Qlist[i]], ns.CNOT) 
+            ns.qubits.operate([Qlist[i+1],ES_Qlist[i]], ns.CNOT) 
+            mes.append(ns.qubits.qubitapi.measure(ES_Qlist[i],observable=Z)[0])#
+        #print(mes)
+
+
+        # get Qlist idea from Error Syndrome
+        res=[True]*len(Qlist)
+        ind=True
+        for i in range(len(mes)):
+            if mes[i]==1:
+                ind= not ind
+                res[i+1]=ind
+            else:
+                res[i+1]=ind
+
+        # count false cases
+        F_count=0
+        for i in res:
+            if i ==False:
+                F_count+=1
+
+        # correct qubits
+        if 2*F_count>len(mes): # case that false is more than true, than false might be the correct ones.
+            for i in range(len(res)):
+                if res[i] == True:
+                    X|Qlist[i]
+        else:
+            for i in range(len(res)):
+                if res[i] == False:
+                    X|Qlist[i]
+        
+        ret.append(Qlist[0])
+    
+    return ret
+    
+
+
+# In[ ]:
+
+
+#Verify
+
+qlist1=create_qubits(7)
+qlist2=create_qubits(7)
+qlist3=create_qubits(7)
+
+
+#X|qlist1[5]
+X|qlist2[5]
+X|qlist3[5]
+#X|qlist[0]
+#X|qlist[2]
+#X|qlist[1]
+
+for i in qlist1:
+    print(ns.qubits.qubitapi.measure(i,observable=Z))
+
+print("--------")
+res=QBitCorrection(qlist1,qlist2,qlist3)
+for i in res:
+    print(ns.qubits.qubitapi.measure(i,observable=Z))
+
+
+# In[ ]:
+
+
+'''
+Create EPR pairs.
+input:
+    Numbers of pairs.
+output:
+    Two lists of qubits, with the corresponding slots entangled.
+'''
+import netsquid as ns
+from netsquid.qubits import create_qubits
+from netsquid.qubits.operators import *
+
+def Create_multiEPR(num_bits):
+    qListA=[]
+    qListB=[]
+    for i in range(num_bits):
+        qA, qB = create_qubits(2) # qubit 00
+        ns.qubits.operate(qA, ns.H)
+        ns.qubits.operate([qA,qB], ns.CNOT)
+        qListA.append(qA)
+        qListB.append(qB)
+    
+    
+    return qListA, qListB 
+    
+    
+
+
+# In[ ]:
+
+
+# Verify
+AA,BB=Create_multiEPR(5)
+mes=ns.qubits.qubitapi.measure(AA[2],observable=Z)
+for i in range(0,4):
+    print(AA[i].qstate.dm)
+    print(BB[i].qstate.dm)
+    
+print(mes)
+
+
+# In[ ]:
+
+
+'''
+Compare two lists, find the unmatched index, then remove corresponding slots in loc_meas.
+Input:
+    Two lists with elements 0-2 (0:Z, 1:X, 2:qubit miss).
+Output:
+    measurement result left.
+
+'''
+def Compare_basis(loc_basis_list,res_basis_list,loc_meas):
+    
+    if len(loc_basis_list) != len(res_basis_list):
+        print("Comparing error! length issue!")
+        print(loc_basis_list)
+        print(res_basis_list)
+        return -1
+    popList=[]
+    
+    for i in range(len(res_basis_list)):
+        if loc_basis_list[i] != res_basis_list[i]:
+            popList.append(i)
+    
+    
+    for i in reversed(popList): 
+        if loc_meas:
+            loc_meas.pop(i)
+        
+    return loc_meas
+
+
+# In[ ]:
+
+
+# Verify
+a=[1,2,3]
+b=[4,2,6]
+c=[7,8,9]
+Compare_basis(a,b,c)
+print(c)
+
+
+# In[42]:
+
+
+import netsquid as ns
+from random import randint
+from netsquid.qubits.operators import X,Z
+
+
+'''
+Randomly measure a qubits list by Z or X basis.
+Input:
+    Numbers of qubits that should be >= the length of qlist. Equal case happens when no loss.
+    Qubit list to measure.
+Output:
+    basisList: A list of basis applied(Z X -1). -1 means qubit missing. (detect by qubit name)
+    loc_res_measure: A list of measurment results. If there's a qubit loss, 
+    both opList and loc_res_measure will have value -1 in the such slot in the list.
+
+'''
+
+def Random_ZX_measure(num_bits,qlist):
+    num_start=int(qlist[0].name[-len('-'):])# get value after qubit name "QS#<i>-n"
+    basisList = []*num_bits  # set boundary
+    loc_res_measure=[]*num_bits  # set boundary
+    ind=0
+    for i in range(num_start,num_start+num_bits):
+        if ind <= len(qlist)-1:
+            if int(qlist[ind].name[-len('-'):]) == i:
+                rbit = randint(0,1) # 0:Z 1:X
+                if rbit:
+                    basisList.append('X')
+                    loc_res_measure.append(ns.qubits.qubitapi.
+                        measure(qlist[ind],observable=X)[0]) #measure in Hadamard basis
+                else:
+                    basisList.append('Z')
+                    loc_res_measure.append(ns.qubits.qubitapi.
+                        measure(qlist[ind],observable=Z)[0]) #measure in standard basis
+                ind+=1
+        else:
+            basisList.append(-1)
+            loc_res_measure.append(-1)
+    return basisList,loc_res_measure
+
+
+# In[47]:
+
+
+# verify
+from netsquid.qubits import create_qubits
+
+qList = create_qubits(4)
+qList2 = create_qubits(3)
+qList2.pop()
+qList.extend(qList2)
+print(qList)
+
+oplist,mes=Random_ZX_measure(6,qList)
+
+print(oplist,mes)
+
+
+# In[ ]:
+
+
+
+

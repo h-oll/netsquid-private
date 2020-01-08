@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[49]:
 
 
 import numpy as np
 import netsquid as ns
 from netsquid.nodes.node import Node
-from netsquid.nodes.connections import DirectConnection
-from netsquid.components import ClassicalFibre,QuantumFibre,FibreLossModel
+from netsquid.components import ClassicalFibre,QuantumFibre
 from netsquid.qubits import create_qubits
-from netsquid.qubits.operators import *
-from random import randint
+from netsquid.qubits.operators import H,Z,X
 from netsquid.protocols import Protocol
 
+from random import randint
 
-# In[2]:
+
+# In[50]:
 
 
 '''
@@ -41,36 +41,51 @@ def Create_multiEPR(num_bits):
 '''
 Randomly measure a qubits list by Z or X basis.
 Input:
-    Numbers of qubits that should be the length of qlist if no losses.
+    Numbers of qubits that should be >= the length of qlist. Equal case happens when no loss.
     Qubit list to measure.
 Output:
-    A list of operation(0:Z 1:X).
-    A list of measurment results. If there's a qubit loss, 
-    both opList and loc_res_measure will have value 2 in the such slot in the list.
+    basisList: A list of basis applied(Z X -1). -1 means qubit missing. (detect by qubit name)
+    loc_res_measure: A list of measurment results. If there's a qubit loss, 
+    both opList and loc_res_measure will have value -1 in the such slot in the list.
 
 '''
+
 def Random_ZX_measure(num_bits,qlist):
-    opList = [2]*num_bits
-    loc_res_measure=[2]*num_bits
-    for q in qlist:
-        rbit = randint(0,1) # 0:Z 1:X
-        num=int(q.name[3:-len('-')-1]) # get value before qubit name "QS#<i>-n"
-        opList[num] = rbit
-        if rbit==0:
-            loc_res_measure[num]=ns.qubits.qubitapi.measure(q,observable=Z)[0] #measure in standard basis
-        elif rbit==1:
-            loc_res_measure[num]=ns.qubits.qubitapi.measure(q,observable=X)[0] #measure in Hadamard basis
+    num_start=int(qlist[0].name[3:-len('-')-1])# get value after qubit name "QS#<i>-n"
+    basisList = []*num_bits  # set boundary
+    loc_res_measure=[]*num_bits  # set boundary
+    ind=0
+    for i in range(num_start,num_start+num_bits):
+        if ind <= len(qlist)-1:
+            if int(qlist[ind].name[3:-len('-')-1]) == i:
+                rbit = randint(0,1) # 0:Z 1:X
+                if rbit:
+                    basisList.append('X')
+                    loc_res_measure.append(ns.qubits.qubitapi.
+                        measure(qlist[ind],observable=X)[0]) #measure in Hadamard basis
+                else:
+                    basisList.append('Z')
+                    loc_res_measure.append(ns.qubits.qubitapi.
+                        measure(qlist[ind],observable=Z)[0]) #measure in standard basis
+                ind+=1
+            else:
+                basisList.append(-1)
+                loc_res_measure.append(-1)
         else:
-            print("measuring ERROR!!\n")
-    return opList,loc_res_measure
+            basisList.append(-1)
+            loc_res_measure.append(-1)
+            
+    return basisList,loc_res_measure
     
     
     
     
 '''
-Compare two lists, find the unmatched index, then remove corresponding slots in loc_meas.
+Compare two lists, find the unmatched index, 
+    then remove corresponding slots in loc_meas.
 Input:
-    Two lists with elements 0-2 (0:Z, 1:X, 2:qubit miss).
+    loc_basis_list,res_basis_list: Two lists with elements 0-2 (Z,X, -1:qubit missing).
+    loc_meas: Local measurement result to keep 
 Output:
     measurement result left.
 
@@ -79,8 +94,12 @@ def Compare_basis(loc_basis_list,res_basis_list,loc_meas):
     
     if len(loc_basis_list) != len(res_basis_list):
         print("Comparing error! length issue!")
+        ''' debug
         print(loc_basis_list)
+        print(len(loc_basis_list))
         print(res_basis_list)
+        print(len(res_basis_list))
+        '''
         return -1
     
     popList=[]
@@ -97,7 +116,7 @@ def Compare_basis(loc_basis_list,res_basis_list,loc_meas):
     return loc_meas
 
 
-# In[3]:
+# In[51]:
 
 
 class E91(Protocol):
@@ -112,16 +131,23 @@ class E91(Protocol):
         
     def E91_B_randMeas(self,qListB):
         self.qListB = qListB.items
-        self.basisList_B, self.res_measure_B = Random_ZX_measure(self.num_bits,self.qListB)
+        #print(qListB)
+        self.basisList_B, self.res_measure_B = Random_ZX_measure(self.num_bits,
+            self.qListB)
+        #print(self.basisList_B)
         self.node_B.ports["portCB_1"].tx_output(self.basisList_B)
         
         
         
         
     def E91_A_compare_keyGen(self,basisList_fromB):
-        self.basisList_A, self.res_measure_A = Random_ZX_measure(self.num_bits,self.qListA)
+        self.basisList_A, self.res_measure_A = Random_ZX_measure(self.num_bits,
+            self.qListA)
         self.node_A.ports["portCA_2"].tx_output(self.basisList_A)
-        self.key_A=Compare_basis(self.basisList_A,basisList_fromB.items,self.res_measure_A)
+        #print(self.basisList_A)
+        #print(basisList_fromB.items)
+        self.key_A=Compare_basis(self.basisList_A,basisList_fromB.items,
+            self.res_measure_A)
         self.key_A = ''.join(map(str, self.key_A))
         print(self.key_A)  # show results
 
@@ -201,11 +227,12 @@ class E91(Protocol):
         self.E91_A_sendHalf_EPR()        
 
 
-# In[4]:
+# In[52]:
 
 
+# Test
 ns.sim_reset()
-MyE91=E91(num_bits=50)
+MyE91=E91(num_bits=70)
 ns.sim_run()
 
 
