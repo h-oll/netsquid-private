@@ -11,6 +11,7 @@ from netsquid.components import ClassicalFibre,QuantumFibre
 from netsquid.qubits import create_qubits
 from netsquid.qubits.operators import H,Z,X
 from netsquid.protocols import Protocol
+from netsquid.nodes.connections import  DirectConnection
 
 from random import randint
 
