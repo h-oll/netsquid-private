@@ -74,6 +74,8 @@ The code is divided into blocks, each block defines functions related to their b
 - Quantum Token
 - Quantum Cheque
 
+## Quantum Teleportation
+- State Teleportation
 
 ## Others
 - Quantum Memory
