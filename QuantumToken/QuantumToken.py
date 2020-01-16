@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import numpy as np
@@ -13,33 +13,37 @@ from netsquid.qubits.operators import *
 from netsquid.nodes.connections import DirectConnection
 from netsquid.components import ClassicalFibre,QuantumFibre,FibreLossModel,QuantumMemory, DepolarNoiseModel,DephaseNoiseModel
 from netsquid.components.models import FixedDelayModel, GaussianDelayModel, FibreDelayModel
+from netsquid.pydynaa import Entity,EventHandler,EventType
 
 from random import seed, randint
 import time
 
 
-# In[3]:
+# In[2]:
 
 
+'''
+Genenrate a list with elements 0 or 1 randomly.
+Indicates basis later on.
+input:
+    Length of list.
+output:
+    A list consists of 0 and 1.
+'''
+def Random_basis_gen(length):
+    return [randint(0,1) for i in range(length)]
 
-def Random_basis_gen(num_bits):
-    seed(randint(0, 2**num_bits))
-    opList=[]
-    for _ in range(num_bits):
-        rbit = randint(0,1)
-        if rbit==0:
-            opList.append(0) 
-        elif rbit==1:
-            opList.append(1)
-        else:
-            print("randint ERROR!!\n")
-            return 0
-    return opList
 
-    
-# returns a list of stats and a list of qubits
+'''
+Randomly produce qubits in four states, and record the states.
+
+input:
+    Number of qubits in the list.
+
+output:
+    A list of stats and a list of qubits
+'''   
 def Create_random_qubits(num_bits):
-    seed(randint(0, 4**num_bits))
     res_state=[]
     qlist=[]
     qlist=create_qubits(num_bits,system_name="Q") 
@@ -47,24 +51,28 @@ def Create_random_qubits(num_bits):
         res_state.append(randint(0,3))
     for a,b in zip(res_state, qlist):
         if   a == 0: # 0 state
-            #print("0",b.qstate.dm)
             pass
         elif a == 1: # 1 state    #X
             X | b
-            #print("1",b.qstate.dm)
         elif a == 2: # + state    #H
             H | b
-            #print("+",b.qstate.dm)
         elif a == 3: # - state    #XH
             X | b
             H | b
-            #print("-",b.qstate.dm)
         else :
             print("Create random bits ERROR!!")
     return res_state, qlist
 
 
 
+'''
+Measure qubits according to specific basis.
+input:
+    A list of 0/1 indicating bisis.
+    A qubit list to be measure.
+output:
+    A list of results of measurement.
+'''
 def Measure_by_basis(basisList,qList):
     if len(basisList)<len(qList): 
         print("Quantum list is too long! ERROR!!")
@@ -83,25 +91,32 @@ def Measure_by_basis(basisList,qList):
         return res_measurement
 
 
+'''
+To decide whether the challenger passes thechallenge.
+
+input:
+    Numbers of qubits in list.
+    The challenge given to challenger.
+    The state list this party has recorded.
+    Measurement results from another party.
+output:
+    The rate of successfully pass the challenge.
+'''
 def Match_rate_calculate(num_bits,challenge,stateList,res_measure):
     False_count=0
     for a,b,c in zip(challenge,stateList,res_measure):
         if int(a)==0 :
             if b<=1 and c[1]>=0.999 and b!=c[0]:
                 False_count+=1
-                #print(a,b,c)
             elif b>1 and c[1]>=0.999:
                 False_count+=1
-                #print(a,b,c)
             else:
                 pass
         elif int(a)==1:
             if b>1 and c[1]>=0.999 and b-2!=c[0]:
                 False_count+=1
-                #print(a,b,c)
             elif b<=1 and c[1]>=0.999:
                 False_count+=1
-                #print(a,b,c)
             else:
                 pass
         else:
@@ -116,7 +131,7 @@ def Match_rate_calculate(num_bits,challenge,stateList,res_measure):
     
 
 
-# In[4]:
+# In[3]:
 
 
 class QuantumToken(Protocol):
@@ -132,17 +147,24 @@ class QuantumToken(Protocol):
     def A_ask_challenge(self, qList):
         self.tokenQlist=qList.items
         self.A_memory.put(self.tokenQlist)
-        #print("sleeping...")
-        #time.sleep(5)   
-        temp=[]
-        for i in range(len(self.tokenQlist)):
-            temp.append(i)
-        self.tokenQlist=self.A_memory.pop(temp)
-        message="10101"    #use 10101 as request of challenge
-        self.node_A.ports["portC_A1"].tx_output(message)
         
+        # schedule waiting for event
+        
+        My_waitENVtype = EventType("WAIT_EVENT", "Wait for N nanoseconds")
+        self._schedule_after(self.waitTime, My_waitENVtype) 
+        self._wait_once(ns.EventHandler(self.CpopMem),entity=self
+            ,event_type=My_waitENVtype) 
+        
+    
+    def CpopMem(self,event):
+        # pop out from qmem
+        self.tokenQlist=self.A_memory.pop(list(np.arange(len(self.tokenQlist)))) #pop all
+        message = "10101"    #use 10101 as request of challenge
+        self.node_A.ports["portC_A1"].tx_output(message)
+
         
     def B_send_challenge(self,message):
+        #print("B_send_challenge at ",ns.sim_time())
         message=message.items[0]
         if str(message)=="10101": #use 10101 as request of challenge
             self.challenge=Random_basis_gen(self.num_bits)
@@ -158,11 +180,10 @@ class QuantumToken(Protocol):
         
         
     def B_evaluate_reply(self,res_measure):      
-        self.success_rate=Match_rate_calculate(self.num_bits,self.challenge
+        self.success_rate = Match_rate_calculate(self.num_bits,self.challenge
             ,self.stateList,res_measure.items)
         #print("success_rate: ",self.success_rate)
-        
-        if self.validation_threshold<=self.success_rate:
+        if self.validation_threshold <= self.success_rate:
             #print("Accepted!")
             self.permission = True
         else:
@@ -171,7 +192,8 @@ class QuantumToken(Protocol):
     
     
     # basic functions ========================================================================
-    def __init__(self, num_bits=8,fiberLenth=1,depolar_rate=0,timeIND=False): 
+    def __init__(self, num_bits=8,fiberLenth=1,depolar_rate=0
+                 ,timeIND=False,threshold=0.95,waitTime=0): 
         super().__init__()
         self.node_A = Node("A",ID=0,port_names=["portQ_A","portC_A1"
             ,"portC_A2","portC_A3"])
@@ -182,13 +204,14 @@ class QuantumToken(Protocol):
         self.num_bits = num_bits
         self.stateList = None
         self.tokenQlist = None
-        self.challenge = []               # B to A
-        self.validation_threshold = 0.95
+        self.challenge = [] 
+        self.validation_threshold = threshold
         self.permission = False
         self.A_memory = None
         self.success_rate = None
         self.depolar_rate = depolar_rate
         self.timeIND = timeIND
+        self.waitTime = waitTime
         self.start()
         
     def stop(self):
@@ -234,10 +257,7 @@ class QuantumToken(Protocol):
         # quantum memory========================================================
         self.A_memory = QuantumMemory("QMemory_A", self.num_bits,ID=0, 
             memory_noise_models=DepolarNoiseModel(depolar_rate=self.depolar_rate,
-            time_independent=self.timeIND))#True
-        #QuantumNoiseModel
-        #DephaseNoiseModel(dephase_rate
-        #DepolarNoiseModel(depolar_rate
+            time_independent=self.timeIND))
         self.node_A.add_subcomponent(self.A_memory)
         
         B_memory =QuantumMemory("QMemory_B", self.num_bits,ID=1, 
@@ -259,68 +279,89 @@ class QuantumToken(Protocol):
 
 
 
-# In[5]:
+# In[4]:
 
 
 def run_QuantumToken_sim(run_times=1,fiberLenth=10**-6
-    ,num_bits=8,depolar_rate=0,timeIND=False):
+    ,num_bits=8,depolar_rate=0,timeIND=False,threshold=0.95,waitTime=0): 
+    
     
     MyQuantumTokenList=[]
     for i in range(run_times): 
-        #print("The ",i+1,"th run...")
         ns.sim_reset()
         MyQT=QuantumToken(num_bits=num_bits,fiberLenth=fiberLenth,
-            depolar_rate=depolar_rate,timeIND=timeIND)
+            depolar_rate=depolar_rate,timeIND=timeIND,threshold=threshold
+            ,waitTime=waitTime)
 
         ns.sim_run()
-        #the success_rate is calculated only before run
+        # the success_rate is calculated only before run
         MyQuantumTokenList.append(MyQT.success_rate) 
         
     #ns.logger.setLevel(1)
-    return MyQuantumTokenList
+    return sum(MyQuantumTokenList)/len(MyQuantumTokenList)
 
 
 
 
-# In[7]:
+# In[5]:
 
 
 import matplotlib.pyplot as plt
 
+#threshold doesn't matter in this plot
 def QuantumToken_plot():
     y_axis=[]
     x_axis=[]
-    run_times=50
+    run_times=100
     num_bits=40
     min_dis=0
-    max_dis=100
+    max_dis=10**8
 
-    #first line
-    for i in range(min_dis,max_dis,1):
-        #rate_sum=0.0
-        x_axis.append(i/100)
+    # first curve
+    for i in range(min_dis,max_dis,5*10**6): # from 0 to 10**8 ns
+        x_axis.append(i*10**-9) # relate to unit
+        y_axis.append(run_QuantumToken_sim(run_times,num_bits
+            ,depolar_rate=5,timeIND=False,threshold=0.95,waitTime=i)) 
         
-        rate_list=run_QuantumToken_sim(run_times,num_bits
-            ,depolar_rate=i/100,timeIND=True)
-        
-        y_axis.append(sum(rate_list)/len(rate_list))
-        
-    plt.plot(x_axis, y_axis, 'go-',label='MemNoiseModel1')
+    plt.plot(x_axis, y_axis, 'r-',label='depolar_rate=5')
     
-    #y_axis.clear() 
-    #x_axis.clear()
-
+    
+    y_axis.clear() 
+    x_axis.clear()
+    
+    # second curve
+    for i in range(min_dis,max_dis,5*10**6):
+        x_axis.append(i*10**-9) # relate to unit  
+        y_axis.append(run_QuantumToken_sim(run_times,num_bits
+            ,depolar_rate=1000,timeIND=False,threshold=0.95,waitTime=i)) 
         
-    plt.ylabel('average successful rate')
-    plt.xlabel('depolar rate')
+    plt.plot(x_axis, y_axis, 'b-',label='depolar_rate=1000')
+    
+    
+    
+    plt.title('Quantum Token')
+    plt.ylabel('average successful rate for each try')
+    plt.xlabel('Alice waiting time (s)') #µ
 
     plt.legend()
-    plt.savefig('QTplot3.png')
+    plt.savefig('QTplotA8.png')
     plt.show()
 
     
 
 QuantumToken_plot()
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
