@@ -166,7 +166,7 @@ class BB84(Protocol):
         # connect and connect quantum fibres
         self.MyQfiber=QuantumFibre("QFibre_A->B", length=self.fiberLenth, 
             loss_model=FibreLossModel(p_loss_length=self.fibre_loss_length,p_loss_init=self.fibre_loss_init), 
-            depolar_rate=0, noise_model="default") 
+            depolar_rate=0) 
         
 
         # create classical fibre

@@ -166,7 +166,7 @@ class BB84(Protocol):
         # connect and connect quantum fibres
         self.MyQfiber=QuantumFibre("QFibre_A->B", length=self.fiberLenth, 
             loss_model=FibreLossModel(p_loss_length=self.fibre_loss_length,p_loss_init=self.fibre_loss_init), 
-            depolar_rate=0, noise_model="default") 
+            depolar_rate=0) 
         
 
         # create classical fibre
@@ -199,18 +199,13 @@ class BB84(Protocol):
 #===========================================execution==================================
 def run_BB84_sim(runtimes=1,num_bits=8,fibre_len=10**-6
     ,fibre_loss_init=0.2,fibre_loss_length=0.25):
-
     MyBB84List=[]  #protocol list
-    
     for i in range(runtimes): 
         ns.sim_reset()
         #print("The ",i,"th run...")
         MyBB84List.append(BB84(num_bits,fibre_len,fibre_loss_init
             ,fibre_loss_length).key_B)
         ns.sim_run()
-    
-    
-    
     return MyBB84List
 
 #ns.logger.setLevel(1) # for debugging
@@ -270,9 +265,3 @@ def BB84_plot():
     
 
 #BB84_plot()
-
-
-
-
-
-
