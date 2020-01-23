@@ -229,8 +229,7 @@ class QuantumToken(Protocol):
         
         # connect and connect quantum fibres
         self.MyQfiber=QuantumFibre("QFibre_AB", length=self.fiberLenth, 
-            loss_model=None, 
-            noise_model="default") 
+            loss_model=None) 
          
         
         # one directional
