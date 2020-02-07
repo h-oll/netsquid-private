@@ -7,10 +7,10 @@ Here are list of quantum protocol simulations made by NetSquid.
 
 This part means to help readers understand the code.
 
-First of all, my code structure might not be the best one, I am open to discuss about it.
+First of all, my code structure might not be the best one, I am open for discussion.
 All protocols follows the same code structure shown below:
 
-![NsProtocolCodeStructure](https://github.com/h-oll/netsquid-private/blob/master/NsProtocolCodeStructure.png)
+![NsProtocolCodeStructure](https://github.com/h-oll/netsquid-private/blob/master/NsProtocolCodeStructure_70.png)
 
 The code is divided into blocks, each block defines functions related to their block definition.
 
@@ -23,43 +23,29 @@ The code is divided into blocks, each block defines functions related to their b
 
   Functions that can be reused by other protocols belong here.
 
-3. **Protocol Class**
+3. **Quantum Processor/Program Definition**
 
-  Every new protocol has to be declared as a class and inherit "Protocol" class definition in NetSquid.
+  Quantum Processor and Quantum Programs are defined here.
 
-  - **Operation functions**
-  
-    Functions that are used by the current protocol itself. They are customized to this particular protocol.
+4. **Local Protocol Party A**
 
-  - **Base functions**
+  A customized local protocol representing one of the party.
 
-    Due to the inheritance, there are four functions we need to declare:
-    - **\_\_init__**
+5. **Local Protocol Party B**
 
-      Attributes of the protocol are initialized here. They are either physical attributes or data which needs to be stored between different stage of the exchange.
-
-    - **stop**
-
-      Not often used, but declaration is mandatory.
-
-    - **is_connected**
-
-      Not often used, but declaration is mandatory.
-
-    - **start**
-
-      Four implementations are defined here:
-        - fiber configurations
-        - port connections
-        - define callback function
-        - trigger of the starting function
+  A customized local protocol representing another one of the party.
 
 
-4. **Implement function** -opt
+6. **Implementation and Hardware Configuration**
 
-  A function used to call above protocol. It is used to run the same protocol several times, then get average value of certain attribute of the protocol for statistical use.
+  Implementation function includes hardware configuration and protocol function calls.
+  Hardware environment is configured/reconfigured right before every simulation.
 
-5. **Plot Function** -opt
+  Implementation function is used to run the same protocol several times,
+  then take average value of certain attribute of the protocol for statistical use.
+
+
+7. **Plot Function** -opt
 
   A function to plot statistical results of above protocol.
 
@@ -68,6 +54,7 @@ The code is divided into blocks, each block defines functions related to their b
 ## Quantum Key Distribution
 - BB84
 - E91/Ekert/EPR
+- E91/Ekert/EPR NS7.0 version
 
 
 ## Quantum Money
