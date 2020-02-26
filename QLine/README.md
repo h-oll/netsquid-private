@@ -16,3 +16,5 @@ Qubit sending direction:
 
 ## Status
 - The QLine protocol is working, and able to generate key with length (input_number/2) in average between node A and B.
+- Noise/Loss models are applied.
+- It is able to calculate total qubit loss, or key rate with given hardware configuration.
