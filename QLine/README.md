@@ -8,8 +8,8 @@ Author: ChinTe LIAO (liao.chinte@veriqloud.fr)
 The QLine sub-protocol generates a symmetric key between node A and B.
 
 ## To Do
-- Apply on 4 nodes.
+- Repeat the same sub-protocol on other nodes.
+- Apply noise/loss models.
 
 ## Status
-- The QLine sub-protocol is working, and able to generate bits of keys with length (input number / 2).
-Among given party.
+- The QLine sub-protocol is working, and able to generate given length of key (input number / 2 in average) between node A and B.
