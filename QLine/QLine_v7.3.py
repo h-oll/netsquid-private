@@ -1,23 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
-'''
-subQLine simulation 
-
-Qubit sending direction
-(A)------>(B)------>(C)
-This sub-portocol is made for QLine. 
-
-Function:
-Generate classical key between A and B. 
-'''
-
-
 # In[1]:
 
+
+'''
+QLine simulation 
+
+Qubit sending direction
+(A)------>(B)------>(C)------>(D)
+
+Objective:
+Establishes a shared key between A and B. 
+'''
 
 import numpy as np
 import netsquid as ns
@@ -42,6 +37,16 @@ from random import randint
 
 # In[2]:
 
+
+def CheckConnection(NodeList):
+    for node in NodeList:
+        for otherNode in NodeList:
+            if node.get_conn_port(otherNode.ID,label='Q') :
+                print(node.get_conn_port(otherNode.ID,label='Q'))
+            if node.get_conn_port(otherNode.ID,label='C'):
+                print(node.get_conn_port(otherNode.ID,label='C'))
+    print("==================")
+    
 
 # get output value from a Qprogram
 def getPGoutput(Pg,key):
@@ -102,7 +107,7 @@ class QG_T(QuantumProgram):
         
 
 
-# In[17]:
+# In[15]:
 
 
 class fQLine(Protocol):
@@ -130,41 +135,72 @@ class fQLine(Protocol):
         self.TimeF=0.0
         self.TimeD=0.0
         
-        # if not connected
+        # if not forwarded, connect them with Q,C fibres
         if self.nodeList[self.initNodeID].get_conn_port(
-            self.targetNodeID,label='Q')== None:
-        
+            self.initNodeID+1,label='Q')== None:
+            
             # create quantum fibre and connect
             QfibreList=[QuantumFibre(name="QF"+str(i),length=self.fibre_len) 
                 for i in range(self.num_node-1)]
+            
             for i in range(self.num_node-1):
-                self.nodeList[i].connect_to(self.nodeList[i+1],QfibreList[i],label='Q')
-
+                self.nodeList[i].connect_to(
+                    self.nodeList[i+1],QfibreList[i],label='Q')
+            
+            
             # create classical fibre and connect 
             CfibreList=[DirectConnection("CF"+str(i)
                         ,ClassicalFibre(name="CFibre_forth", length=self.fibre_len)
                         ,ClassicalFibre(name="CFibre_back" , length=self.fibre_len))
                             for i in range(self.num_node-1)]
+            
             for i in range(self.num_node-1):
-                nodeList[i].connect_to(nodeList[i+1],CfibreList[i],label='C')
-
-        
-        # forward setting
-        #self.ForwardSetting(initNodeID,targetNodeID)
-        #self.targetNodeID=initNodeID+1
-        
+                self.nodeList[i].connect_to(
+                    self.nodeList[i+1],CfibreList[i],label='C')
         
         super().__init__()
+    
+    
         
         
+    '''
+    Fuction used to modify ports directions.
+    To make indirect path for nodes.
+    The two nodes could have multiple nodes in between.
+    input:
+        initNodeID:  The node which initiate this QKD.
+        targetNodeID: The target node we want to have shared key with. 
+    '''
+    def ForwardSetting(self,initNodeID,targetNodeID):
+        #print("ForwardSetting")
+        if not self.nodeList[initNodeID+1].get_conn_port(
+            initNodeID,label='Q').forwarded_ports: 
+            # if not done before(for multiple bits)
+            for i in range(initNodeID,targetNodeID-1):
+                #print("forth ",i)
+                self.nodeList[i+1].get_conn_port(
+                    i,label='Q').forward_input(
+                    self.nodeList[i+2].get_conn_port(
+                    i+1,label='Q')) 
+                self.nodeList[i+1].get_conn_port(
+                    i,label='C').forward_input(
+                    self.nodeList[i+2].get_conn_port(
+                    i+1,label='C'))
+    
+            for i in range(targetNodeID-2,initNodeID-1,-1):
+                #print("back ",i)
+                self.nodeList[i+1].get_conn_port(
+                    i+2,label='C').forward_input(
+                    self.nodeList[i].get_conn_port(
+                    i+1,label='C'))
+
+
     def start(self):
         super().start()
-        
         # first callback
         self.nodeList[self.targetNodeID].get_conn_port(
-            self.initNodeID,label='Q').bind_input_handler(
+            self.targetNodeID-1,label='Q').bind_input_handler(
             self.T_QubitReceivePrepare)
-        
         self.I_Qubit_prepare()
 
 
@@ -172,7 +208,6 @@ class fQLine(Protocol):
 
     def I_Qubit_prepare(self):
         #print("Qubit_prepare")
-        
         myQG_I=QG_I(self.r,self.b)
         self.processorList[self.initNodeID].execute_program(
             myQG_I,qubit_mapping=[0])
@@ -187,14 +222,15 @@ class fQLine(Protocol):
         
         
     def I_QubitSend(self):
-        #print("QubitSend")
+        #print("I_QubitSend")
         self.nodeList[self.initNodeID].get_conn_port(
             self.initNodeID+1, label='C').bind_input_handler(self.I_Compare)
         
         
-        self.processorList[self.initNodeID].sendfromMem(senderNode=self.nodeList[0]
+        self.processorList[self.initNodeID].sendfromMem(
+            senderNode=self.nodeList[self.initNodeID]
             ,inx=[0]
-            ,receiveNode=self.nodeList[1]) # get even index in qList
+            ,receiveNode=self.nodeList[self.initNodeID+1]) # get even index in qList
 
         
 # 2  ==================================================
@@ -220,18 +256,18 @@ class fQLine(Protocol):
     def T_SendsR(self):
         #print("TargetSend s R")
         self.nodeList[self.targetNodeID].get_conn_port(
-            self.initNodeID, label='C').bind_input_handler(self.T_Compare)
+            self.targetNodeID-1, label='C').bind_input_handler(self.T_Compare)
         
         self.R=getPGoutput(self.myQG_T,'R')
         self.nodeList[self.targetNodeID].get_conn_port(
-            self.initNodeID,label='C').tx_output([self.s,self.R])
+            self.targetNodeID-1,label='C').tx_output([self.s,self.R])
         
 
 
             
 # 3 ==================================================        
         
-    def I_Compare(self,alist): # first in the list is s, second is R
+    def I_Compare(self,alist): # receives [self.s,self.R]
         #print("InitNodeCompare")
         if alist.items[0]==self.r: # if s == r
             self.keyAB=self.b
@@ -240,7 +276,7 @@ class fQLine(Protocol):
 
     def I_Response(self):
         #print("InitNodeResponse")
-        self.nodeList[self.initNodeID].get_conn_port(
+        self.nodeList[self.targetNodeID-1].get_conn_port(
             self.targetNodeID,label='C').tx_output(self.r)
       
     
@@ -254,37 +290,6 @@ class fQLine(Protocol):
         self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF 
         #in nanoseconds    
     
-    
-      
-
-    def ForwardSetting(self,initNodeID,targetNodeID):
-        #print("ForwardSetting")
-        #port1.forward_input(port2)
-        
-        if initNodeID+2==targetNodeID:
-            # forward forth
-            self.nodeList[initNodeID+1].get_conn_port(
-                initNodeID,label='Q').forward_input(
-                self.nodeList[targetNodeID].get_conn_port(
-                targetNodeID-1,label='Q'))
-            self.nodeList[initNodeID+1].get_conn_port(
-                initNodeID,label='C').forward_input(
-                self.nodeList[targetNodeID].get_conn_port(
-                targetNodeID-1,label='C'))
-            # forward back
-            self.nodeList[targetNodeID-1].get_conn_port(
-                targetNodeID,label='C').forward_input(
-                self.nodeList[initNodeID].get_conn_port(
-                targetNodeID-1,label='C'))
-        else:
-            self.ForwardSetting(initNodeID+1,targetNodeID)
-        
-        
-        
-        
-        
-        
-        
 
 
 # In[18]:
@@ -292,9 +297,10 @@ class fQLine(Protocol):
 
 def run_QLine_sim(times=1,fibre_len=10**-3,noise_model=None): # fibre 1 m long
     
-    
     keyListAB=[]
     keyListBA=[]
+    
+    # A B Hardware configuration
     processorA=sendableQProcessor("processor_A", num_positions=1,
                 mem_noise_models=None, phys_instructions=[
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
@@ -320,58 +326,36 @@ def run_QLine_sim(times=1,fibre_len=10**-3,noise_model=None): # fibre 1 m long
                 PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
                 topologies=[None, None, None, None])
 
+    processorD=sendableQProcessor("processor_D", num_positions=1,
+                mem_noise_models=None, phys_instructions=[
+                PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
+                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
+                topologies=[None, None, None, None])
 
     node_A = Node("A",ID=0)
     node_B = Node("B",ID=1)
     node_C = Node("C",ID=2)
+    node_D = Node("D",ID=3)
     
     for i in range(times):
         ns.sim_reset()
-        # A B Hardware configuration
-        myQLine=fQLine(nodeList=[node_A,node_B,node_C]
-            ,processorList=[processorA,processorB,processorC]
-            ,initNodeID=0,targetNodeID=1)
-        #myQLine.ForwardSetting(0,2)
+        myQLine=fQLine(nodeList=[node_A,node_B,node_C,node_D]
+            ,processorList=[processorA,processorB,processorC,processorD]
+            ,initNodeID=0,targetNodeID=3)
+        myQLine.ForwardSetting(0,3)
         myQLine.start()
         ns.sim_run()
         if myQLine.keyAB !=None :
             keyListAB.append(myQLine.keyAB)
             keyListBA.append(myQLine.keyBA)
-        
     print(keyListAB)
     print(keyListBA)
-    
-    '''
-    for i in range(times):
-        ns.sim_reset()
-        
-        myQLine=fQLine(nodeList=[node_A,node_B,node_C]
-            ,processorList=[processorA,processorB,processorC])
-        myQLine.ForwardSetting(1,2)
-        
-        myQLine.start()
-        ns.sim_run()
-    '''
+
         
 #test
+#ns.logger.setLevel(1)
 run_QLine_sim(times=20,fibre_len=10**-3,noise_model=None) 
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
 
 
