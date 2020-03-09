@@ -5,10 +5,10 @@ Author: ChinTe LIAO (liao.chinte@veriqloud.fr)
 ![QLineSubProtocolCodeStructure](https://github.com/h-oll/netsquid-private/blob/master/QLine/QLine.png)
 
 ## Function
-The QLine protocol generates a symmetric key between node A and B.
+The protocol generates a symmetric key between each of the two nodes in QLine.
 
 Qubit sending direction:
-(D)------>(A)------>(B)------>(C)
+(A)------>(B)------>(C)------>(D)
 
 ## To Do
 - Add more physical feature
@@ -16,8 +16,7 @@ Qubit sending direction:
 - Increase extensibility
 
 ## Status
-- The QLine protocol is working, and able to generate key with length (input_number/2) in average between node A and B.
-- Noise/Loss models are applied.
+- The QLine protocol is able to generate key with length (input_number/2) in average between any given nodes in Qline.
+- Noise/Loss models are able to apply.
 - It is able to calculate total qubit loss, or key rate with given hardware configuration.
-- Not able to generate key pairs for all 4 nodes. Forwarding functions are needed.
 - Sub-QLine code is done as an atomic component.(generate key pair between two nodes)
