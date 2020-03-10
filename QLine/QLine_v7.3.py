@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[19]:
 
 
 '''
@@ -35,7 +35,8 @@ from netsquid.components.models.qerrormodels import *
 from random import randint
 
 
-# In[2]:
+# In[20]:
+
 
 
 def CheckConnection(NodeList):
@@ -46,7 +47,6 @@ def CheckConnection(NodeList):
             if node.get_conn_port(otherNode.ID,label='C'):
                 print(node.get_conn_port(otherNode.ID,label='C'))
     print("==================")
-    
 
 # get output value from a Qprogram
 def getPGoutput(Pg,key):
@@ -105,9 +105,11 @@ class QG_T(QuantumProgram):
         
         yield self.run(parallel=False)
         
+   
 
 
-# In[15]:
+# In[21]:
+
 
 
 class fQLine(Protocol):
@@ -140,12 +142,12 @@ class fQLine(Protocol):
             self.initNodeID+1,label='Q')== None:
             
             # create quantum fibre and connect
-            QfibreList=[QuantumFibre(name="QF"+str(i),length=self.fibre_len) 
+            self.QfibreList=[QuantumFibre(name="QF"+str(i),length=self.fibre_len) 
                 for i in range(self.num_node-1)]
             
             for i in range(self.num_node-1):
                 self.nodeList[i].connect_to(
-                    self.nodeList[i+1],QfibreList[i],label='Q')
+                    self.nodeList[i+1],self.QfibreList[i],label='Q')
             
             
             # create classical fibre and connect 
@@ -153,7 +155,6 @@ class fQLine(Protocol):
                         ,ClassicalFibre(name="CFibre_forth", length=self.fibre_len)
                         ,ClassicalFibre(name="CFibre_back" , length=self.fibre_len))
                             for i in range(self.num_node-1)]
-            
             for i in range(self.num_node-1):
                 self.nodeList[i].connect_to(
                     self.nodeList[i+1],CfibreList[i],label='C')
@@ -179,9 +180,8 @@ class fQLine(Protocol):
             for i in range(initNodeID,targetNodeID-1):
                 #print("forth ",i)
                 self.nodeList[i+1].get_conn_port(
-                    i,label='Q').forward_input(
-                    self.nodeList[i+2].get_conn_port(
-                    i+1,label='Q')) 
+                    i,label='Q').forward_input(self.QfibreList[i+1].ports["send"]) 
+                #self.QfibreList[i+1].ports["send"]
                 self.nodeList[i+1].get_conn_port(
                     i,label='C').forward_input(
                     self.nodeList[i+2].get_conn_port(
@@ -292,7 +292,8 @@ class fQLine(Protocol):
     
 
 
-# In[18]:
+# In[22]:
+
 
 
 def run_QLine_sim(times=1,fibre_len=10**-3,noise_model=None): # fibre 1 m long
@@ -306,8 +307,7 @@ def run_QLine_sim(times=1,fibre_len=10**-3,noise_model=None): # fibre 1 m long
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
                 PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
                 PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
-                topologies=[None, None, None, None])
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
 
     #mem_noise_models=[DepolarNoiseModel(0)] * 100
     processorB=sendableQProcessor("processor_B", num_positions=1,
@@ -315,24 +315,21 @@ def run_QLine_sim(times=1,fibre_len=10**-3,noise_model=None): # fibre 1 m long
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
                 PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
                 PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
-                topologies=[None, None, None, None])
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
 
     processorC=sendableQProcessor("processor_C", num_positions=1,
                 mem_noise_models=None, phys_instructions=[
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
                 PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
                 PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
-                topologies=[None, None, None, None])
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
 
     processorD=sendableQProcessor("processor_D", num_positions=1,
                 mem_noise_models=None, phys_instructions=[
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
                 PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
                 PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
-                topologies=[None, None, None, None])
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
 
     node_A = Node("A",ID=0)
     node_B = Node("B",ID=1)
@@ -347,15 +344,26 @@ def run_QLine_sim(times=1,fibre_len=10**-3,noise_model=None): # fibre 1 m long
         myQLine.ForwardSetting(0,3)
         myQLine.start()
         ns.sim_run()
-        if myQLine.keyAB !=None :
+        if myQLine.keyAB != None :
             keyListAB.append(myQLine.keyAB)
             keyListBA.append(myQLine.keyBA)
     print(keyListAB)
     print(keyListBA)
 
-        
+
 #test
 #ns.logger.setLevel(1)
 run_QLine_sim(times=20,fibre_len=10**-3,noise_model=None) 
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
 
 
