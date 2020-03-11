@@ -8,16 +8,23 @@
 QLine simulation 
 
 Qubit sending direction
-(D)------>(A)------>(B)------>(C)
+(A)------>(B)------>(C)------>(D)
 
-Total qubit loss after 4 nodes: 5 dB, 
-meaning that about 109 over 1000 qubits are lost.
+According to roles in Qline, we have
+(O)------>(I)------>(T)------>(D)
+Indicating Origin,Initial,Target and Destiny, where (I) can be (O) 
+as well as (T) being (D).
 
+Origin : First Node of this QLine.
+Initial: The initial node that start to generate a key pair. 
+Target : Target node that share a key pair with the initial node. 
+Destiny: Last node of this QLine.
+
+
+
+Objective:
+Establishes a shared key between A and B. 
 '''
-
-
-# In[6]:
-
 
 import numpy as np
 import netsquid as ns
@@ -40,40 +47,51 @@ from netsquid.components.models.qerrormodels import *
 from random import randint
 
 
-# In[7]:
+# In[12]:
 
+
+
+def CheckConnection(NodeList):
+    for node in NodeList:
+        for otherNode in NodeList:
+            if node.get_conn_port(otherNode.ID,label='Q') :
+                print(node.get_conn_port(otherNode.ID,label='Q'))
+            if node.get_conn_port(otherNode.ID,label='C'):
+                print(node.get_conn_port(otherNode.ID,label='C'))
+    print("==================")
 
 # get output value from a Qprogram
 def getPGoutput(Pg,key):
     resList=[]
     tempDict=Pg.output
     value = tempDict.get(key, "")[0]
-         
     return value
-
 
 
 # A Quantum processor class which is able to send qubits from Qmemory
 class sendableQProcessor(QuantumProcessor):
-    def sendfromMem(self,inx,senderNode,senderPortName):
+    def sendfromMem(self,inx,senderNode,receiveNode):
         payload=self.pop(inx)
-        senderNode.ports[senderPortName].tx_output(payload)
+        senderNode.get_conn_port(receiveNode.ID,label='Q').tx_output(payload)
 
 
-# Quantum program operations on Node D
-class QG_D(QuantumProgram):
+
+# Quantum program operations on Node A 
+class QG_O(QuantumProgram):
+    def __init__(self):
+        super().__init__()
+        
     def program(self):
         idx=self.get_qubit_indices(1)
         self.apply(INSTR_INIT, idx[0])
         yield self.run(parallel=False)
 
-
-# Quantum program operations on Node A 
-class QG_A(QuantumProgram):
+        
+# Quantum program in initNode!=0 case
+class QG_I(QuantumProgram):
     def __init__(self,r,b):
         self.r=r
         self.b=b
-        #print(self.r,self.b)
         super().__init__()
         
     def program(self):
@@ -84,12 +102,12 @@ class QG_A(QuantumProgram):
         if self.r==1:
             #print("did H")
             self.apply(INSTR_H, qubit_indices=idx[0])
-        
         yield self.run(parallel=False)
 
 
-# Quantum program operations on Node B
-class QG_B(QuantumProgram):
+
+# Quantum program operations usually on Node B
+class QG_T(QuantumProgram):
     def __init__(self,c,s):
         self.c=c
         self.s=s
@@ -102,397 +120,378 @@ class QG_B(QuantumProgram):
             self.apply(INSTR_H,qubit_indices=idx[0])
         if self.c==1:
             #print("did X")
-            self.apply(INSTR_X,qubit_indices=idx[0])
-    
+            self.apply(INSTR_X,qubit_indices=idx[0]) 
+        
         yield self.run(parallel=False)
-
-
-# Quantum program operations on Node C
-class QG_C(QuantumProgram):
+        
+        
+class QG_D(QuantumProgram):
     def __init__(self):
         super().__init__()
-        
+
     def program(self):
-        self.apply(INSTR_MEASURE, qubit_indices=0, output_key='r',physical=True) 
-    
+        idx=self.get_qubit_indices(1)
+        self.apply(INSTR_MEASURE, qubit_indices=idx[0], output_key='R',physical=True) 
+        
         yield self.run(parallel=False)
+
+
+# In[13]:
+
+
+class fQLine(Protocol):
+    def __init__(self,nodeList,processorList,initNodeID,targetNodeID):
+        self.nodeList=nodeList
+        self.processorList=processorList
         
+        self.initNodeID=initNodeID
+        self.targetNodeID=targetNodeID
         
-
-
-# In[8]:
-
-
-class QLine(Protocol):
-    
-    def __init__(self
-            ,node_A,processor_A
-            ,node_B,processor_B
-            ,node_C,processor_C
-            ,node_D,processor_D
-            ,portNameQD1="portQD_1"
-                 
-            ,portNameQA1="portQA_1",portNameQA2="portQA_2"
-            ,portNameCA1="portCA_1",portNameCA2="portCA_2"
-
-            ,portNameQB1="portQB_1",portNameQB2="portQB_2"
-            ,portNameCB1="portCB_1",portNameCB2="portCB_2",portNameCB3="portCB_3"
-
-            ,portNameQC1="portQC_1",portNameCC1="portCC_1"):
-
-        self.qubitLoss=True
+        self.num_node=len(nodeList)
+        self.fibre_len=0
         
-        # init D
-        self.node_D=node_D
-        self.processor_D=processor_D
-        self.portNameQD1=portNameQD1
-        
-        
-        
-        # init A
-        self.node_A=node_A
-        self.processor_A=processor_A
+        # A rand
         self.r=randint(0,1)
         self.b=randint(0,1)
-        self.portNameQA1=portNameQA1
-        self.portNameCA1=portNameCA1
-        self.portNameCA2=portNameCA2
-        self.keyA=[]
-        
-        self.node_A.ports[portNameCA1].bind_input_handler(self.A_compare)
-        self.node_A.ports[portNameQA2].bind_input_handler(self.A_receive) 
-        
-        
-        # init B
-        self.node_B=node_B
-        self.processor_B=processor_B
+        # B rand
         self.c=randint(0,1)
         self.s=randint(0,1)
-        self.portNameQB1=portNameQB1
-        self.portNameQB2=portNameQB2
-        self.portNameCB1=portNameCB1
-        self.portNameCB2=portNameCB2
-        self.portNameCB3=portNameCB3
-        self.keyB=[]
         
-        self.node_B.ports[portNameQB1].bind_input_handler(self.B_receive_prepare)
-        self.node_B.ports[portNameCB3].bind_input_handler(self.B_ack_send_A)
-        self.node_B.ports[portNameCB2].bind_input_handler(self.B_compare)
-        
-        # init C
-        self.node_C=node_C
-        self.processor_C=processor_C
-        self.portNameQC1=portNameQC1
-        self.portNameCC1=portNameCC1
-        self.R=None
-        
-        self.node_C.ports[portNameQC1].bind_input_handler(self.C_measure)
+        self.keyAB=None
+        self.keyBA=None
         
         self.TimeF=0.0
         self.TimeD=0.0
         
+        # if not forwarded, connect them with Q,C fibres
+        if self.nodeList[self.initNodeID].get_conn_port(
+            self.initNodeID+1,label='Q')== None:
+            
+            # create quantum fibre and connect
+            self.QfibreList=[QuantumFibre(name="QF"+str(i),length=self.fibre_len,
+                p_loss_init=0,p_loss_length=0) 
+                for i in range(self.num_node-1)]
+            
+            for i in range(self.num_node-1):
+                self.nodeList[i].connect_to(
+                    self.nodeList[i+1],self.QfibreList[i],label='Q')
+            
+            
+            # create classical fibre and connect 
+            CfibreList=[DirectConnection("CF"+str(i)
+                        ,ClassicalFibre(name="CFibre_forth", length=self.fibre_len)
+                        ,ClassicalFibre(name="CFibre_back" , length=self.fibre_len))
+                            for i in range(self.num_node-1)]
+            for i in range(self.num_node-1):
+                self.nodeList[i].connect_to(
+                    self.nodeList[i+1],CfibreList[i],label='C')
+        
         super().__init__()
-        
-        
+
+
+
+
+    '''
+    Fuction used to modify ports directions.
+    To make indirect path for nodes.
+    The two nodes could have multiple nodes in between.
+    input:
+        initNodeID:  The node which initiate this QKD.
+        targetNodeID: The target node we want to have shared key with. 
+    '''
+    def ForwardSetting(self,initNodeID,targetNodeID):
+        #print("ForwardSetting")
+        if not self.nodeList[initNodeID+1].get_conn_port(
+            initNodeID,label='Q').forwarded_ports: 
+            # if not done before(for multiple bits)
+            for i in range(self.initNodeID,targetNodeID-1):
+                self.nodeList[i+1].get_conn_port(
+                    i,label='Q').forward_input(self.QfibreList[i+1].ports["send"]) 
+                self.nodeList[i+1].get_conn_port(
+                    i,label='C').forward_input(
+                    self.nodeList[i+2].get_conn_port(
+                    i+1,label='C'))
+    
+            for i in range(self.targetNodeID-2,self.initNodeID-1,-1):
+                self.nodeList[i+1].get_conn_port(
+                    i+2,label='C').forward_input(
+                    self.nodeList[i].get_conn_port(
+                    i+1,label='C'))
+
+
     def start(self):
         super().start()
-        self.TimeF=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND) #in nanoseconds
-        self.D_prepare()
         
-# 0 =====================================================================
-
-    def D_prepare(self):
-        myQG_D=QG_D()
-        self.processor_D.execute_program(myQG_D,qubit_mapping=[0])
-        self.processor_D.set_program_done_callback(self.D_send,once=True)
-        self.processor_D.set_program_fail_callback(self.D_Fail,once=True)
+        # forware setting based on position of two nodes
+        if self.initNodeID+1!=self.targetNodeID:
+            self.ForwardSetting(self.initNodeID,self.targetNodeID)
+        if self.initNodeID>=1:
+            self.ForwardSetting(0,self.initNodeID)
+        if self.targetNodeID<len(self.nodeList)-2:
+            self.ForwardSetting(
+                self.targetNodeID,self.nodeList[len(self.nodeList)].ID)
         
-    def D_Fail(self):
-        print("D failed Qprogram!")
+        # T callback
+        self.nodeList[self.targetNodeID].get_conn_port(
+            self.targetNodeID-1,label='Q').bind_input_handler(
+            self.T_Rec_HX)
         
-        
-    def D_send(self):
-        self.processor_D.sendfromMem(senderNode=self.node_D
-            ,inx=[0]                  # get even index in qList
-            ,senderPortName=self.node_D.ports[self.portNameQD1].name)
-        
-        
-# 1 =====================================================================        
-    def A_receive(self,qubit):
-        #print("A received:",qubit.items)
-
-        self.processor_A.put(qubits=qubit.items)
-
-        myQG_A=QG_A(self.r,self.b)
-        self.processor_A.execute_program(myQG_A,qubit_mapping=[0])
-        self.processor_A.set_program_done_callback(self.A_send,once=True)
-        self.processor_A.set_program_fail_callback(self.A_Fail,once=True)
-
-    
-    def A_Fail(self):
-        self.qubitLoss=True
-        print("A failed Qprogram!")
-        
-        
-    def A_send(self):
-        self.processor_A.sendfromMem(senderNode=self.node_A
-            ,inx=[0]                  # get even index in qList
-            ,senderPortName=self.node_A.ports[self.portNameQA1].name)
+        self.O_Qubit_prepare()
         
 
-# 2  =====================================================================  
-    def B_receive_prepare(self,qubit):
-        #print("B received:",qubit.items)
+# O =========================================== 
 
-        self.processor_B.put(qubits=qubit.items)
-
-        myQG_B=QG_B(self.c,self.s)
-        self.processor_B.execute_program(myQG_B,qubit_mapping=[0])
-        self.processor_B.set_program_done_callback(self.B_send,once=True)
-        self.processor_B.set_program_fail_callback(self.B_PgFail,once=True)
-
+    def O_Qubit_prepare(self):
+        #print("O_Qubit_prepare")
+        myQG_O=QG_O()
+        self.processorList[0].execute_program(
+            myQG_O,qubit_mapping=[0])
+        self.processorList[0].set_program_done_callback(
+            self.O_QubitSend,once=True)
+        self.processorList[0].set_program_fail_callback(
+            self.O_QG_Failed,once=True)
         
-    def B_PgFail(self):
-        self.qubitLoss=True
-        print("B Qprogrm failed!")
         
- 
-
-    def B_send(self):
-        self.processor_B.sendfromMem(senderNode=self.node_B
-            ,inx=0
-            ,senderPortName=self.node_B.ports[self.portNameQB2].name)
-        
-
-
-# 3 =====================================================================
-    def C_measure(self,qubit):
-        #print("C received:",qubit.items)
-
-        self.processor_C.put(qubits=qubit.items)
-        self.myQG_C=QG_C()
-        self.processor_C.execute_program(self.myQG_C,qubit_mapping=[0])
-        self.processor_C.set_program_done_callback(self.C_send,once=True)
-        self.processor_C.set_program_fail_callback(self.C_PgFail,once=True)
-
-        
-    def C_PgFail(self):
-        self.qubitLoss=True
-        print("C Qprogram failed!")        
-        
-
-    # C send classical data to B
-    def C_send(self):
-        self.R=getPGoutput(self.myQG_C,'r')
-        if self.R != None:
-            self.node_C.ports[self.portNameCC1].tx_output(self.R)
+        if self.initNodeID==0: # if I==O !!!
+            self.processorList[0].set_program_done_callback(
+                self.I_QG_HX,once=True)
         else:
-            print("Error! R is None")
+            self.processorList[0].set_program_done_callback(
+                self.O_QubitSend,once=True)
         
-# 4 =====================================================================
-        
-    def B_ack_send_A(self,R):
-        self.node_B.ports[self.portNameCB1].tx_output([R.items[0],self.s])
+    
+    def O_QG_Failed(self):
+        print("QG_Failed")
     
     
-# 5 =====================================================================
-    
-    def A_compare(self,alist): # first in the list is R, second is s
-        if alist.items[1]==self.r: # if s == r
-            self.keyA.append(self.b)
-        self.A_announce_B()
-        
+    # when O != I
+    def O_QubitSend(self):
+        #print("O_QubitSend")
+        # I callback
+        self.nodeList[self.initNodeID].get_conn_port(
+            self.initNodeID-1,label='Q').bind_input_handler(
+            self.I_rec)
+        # send qubits
+        self.processorList[0].sendfromMem(
+            senderNode=self.nodeList[0],inx=[0]
+            ,receiveNode=self.nodeList[1]) 
 
-    def A_announce_B(self):
-        self.node_A.ports[self.portNameCA2].tx_output(self.r)
-    
-    
-# 6 =====================================================================
+# I  ==================================================
+    def I_rec(self,qubit):
+        #print("I_rec")
+        self.processorList[self.initNodeID].put(qubits=qubit.items)
+        self.I_QG_HX()
+        
+    def I_QG_HX(self):
+        #print("I_QG_HX")
+        myQG_I=QG_I(self.r,self.b)
+        self.processorList[self.initNodeID].execute_program(
+            myQG_I,qubit_mapping=[0])
+        self.processorList[self.initNodeID].set_program_done_callback(
+            self.I_QubitSend,once=True)
+        self.processorList[self.initNodeID].set_program_fail_callback(
+            self.I_QG_Failed,once=True)
+        
+    def I_QG_Failed(self):
+        print("QG_I_Failed")     
+        
+    def I_QubitSend(self):
+        #print("I_QubitSend")
+        # I callback
+        self.nodeList[self.initNodeID].get_conn_port(
+            self.initNodeID+1, label='C').bind_input_handler(self.I_Compare)
 
-    def B_compare(self,r):
+        self.processorList[self.initNodeID].sendfromMem(
+            senderNode=self.nodeList[self.initNodeID],inx=[0]
+            ,receiveNode=self.nodeList[self.initNodeID+1]) # get even index in qList
+
+
+# T  ==================================================
+    def T_PG_Fail(self):
+        self.qubitLoss=True
+        print("PG_targetFail!")
+        
+    def T_Rec_HX(self,qubit):
+        #print("T_Rec_HX: ",qubit.items)
+        self.processorList[self.targetNodeID].put(qubits=qubit.items)
+        self.myQG_T=QG_T(self.c,self.s)
+        
+        # T HX
+        self.processorList[self.targetNodeID].execute_program(
+            self.myQG_T,qubit_mapping=[0])
+        self.processorList[self.targetNodeID].set_program_fail_callback(
+            self.T_PG_Fail,once=True)
+        
+        # if T==D !!!
+        if self.targetNodeID==len(self.nodeList)-1: 
+            # send s R back to T then I
+            #len(self.nodeList)-1==self.targetNodeID
+            self.processorList[self.targetNodeID].set_program_done_callback(
+                self.D_meas,once=True)
+        
+        else: # T!=D !!! send forward
+            # set T callback for R
+            self.nodeList[self.targetNodeID].get_conn_port(
+                self.targetNodeID+1, label='C').bind_input_handler(self.T_recR)
+            # set callback for D
+            self.nodeList[-1].get_conn_port(
+                len(self.nodeList)-2, label='Q').bind_input_handler(self.D_rec)
+            
+            #send to D
+            self.processorList[self.targetNodeID].set_program_done_callback(
+                self.T_Send_D,once=True)
+            # get even index in qList
+
+
+        
+    # T!=D
+    def T_Send_D(self):
+        #print("T_Send_D")
+        self.processorList[self.targetNodeID].sendfromMem(
+            senderNode=self.nodeList[self.targetNodeID],inx=[0]
+            ,receiveNode=self.nodeList[self.targetNodeID+1])
+        #self.nodeList[self.targetNodeID].get_conn_port(
+        #    self.targetNodeID-1, label='C').bind_input_handler(self.T_Compare)
+
+#  D ==================================================
+    # must
+    def D_meas(self):
+        #print("D_meas")
+        self.myQG_D=QG_D()
+        # lastnode.ID==len(self.nodeList)-1
+        #print(self.nodeList[-1])
+        #print(self.nodeList[len(self.nodeList)-1])
+        self.processorList[-1].execute_program(
+            self.myQG_D,qubit_mapping=[0])
+        self.processorList[-1].set_program_fail_callback(
+            self.D_Fail,once=True)
+        self.processorList[-1].set_program_done_callback(
+            self.D_sendback,once=True)
+
+    def D_Fail(self):
+        print("D_Fail")
+
+    # if T!=D
+    def D_rec(self,qubit):
+        #print("D_rec")
+        self.processorList[-1].put(qubits=qubit.items)
+        self.D_meas()
+
+    # must
+    def D_sendback(self):
+        #print("D_sendback")
+        self.R=getPGoutput(self.myQG_D,'R')
+        self.nodeList[len(self.nodeList)-1].get_conn_port(
+            len(self.nodeList)-2,label='C').tx_output([self.s,self.R])
+        
+# C1 ==================================================
+
+    def T_recR(self,R):
+        # receive R then send back
+        self.nodeList[self.targetNodeID].get_conn_port(
+            self.targetNodeID-1,label='C').tx_output([self.s,R.items[0]])
+        
+    
+# C2 ==================================================    
+    def I_Compare(self,alist): # receives [self.s,self.R]
+        #print("InitNodeCompare")
+        if alist.items[0]==self.r: # if s == r
+            self.keyAB=self.b
+        self.I_Response()
+
+    def I_Response(self):
+        #print("InitNodeResponse")
+        # callback T compare
+        self.nodeList[self.targetNodeID].get_conn_port(
+            self.targetNodeID-1, label='C').bind_input_handler(self.T_Compare)
+
+        self.nodeList[self.initNodeID].get_conn_port(
+            self.initNodeID+1,label='C').tx_output(self.r)
+      
+    
+# C3 =====================================================================
+
+    def T_Compare(self,r):
+        #print("TargetNodeCompare")
         self.qubitLoss=False
         if self.s==r.items[0]:
-            self.keyB.append(self.R ^ self.c)
-        self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF #in nanoseconds
-        
-        
+            self.keyBA=self.R ^ self.c
+        self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF 
+        #in nanoseconds    
 
 
-# In[9]:
+# In[16]:
+
 
 
 def run_QLine_sim(times=1,fibre_len=10**-3,noise_model=None): # fibre 1 m long
-    QlineKeyListA=[]
-    QlineKeyListB=[]
-    totalTime=0.0
-    qubitLossCount=0
-    #TimeF=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)
-    #DepolarNoiseModel
+    
+    keyListAB=[]
+    keyListBA=[]
+    
+    # A B Hardware configuration
+    processorA=sendableQProcessor("processor_A", num_positions=1,
+                mem_noise_models=None, phys_instructions=[
+                PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
+                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
+
+    #mem_noise_models=[DepolarNoiseModel(0)] * 100
+    processorB=sendableQProcessor("processor_B", num_positions=1,
+                mem_noise_models=None, phys_instructions=[
+                PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
+                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
+
+    processorC=sendableQProcessor("processor_C", num_positions=1,
+                mem_noise_models=None, phys_instructions=[
+                PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
+                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
+
+    processorD=sendableQProcessor("processor_D", num_positions=1,
+                mem_noise_models=None, phys_instructions=[
+                PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
+                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
+
+    node_A = Node("A",ID=0)
+    node_B = Node("B",ID=1)
+    node_C = Node("C",ID=2)
+    node_D = Node("D",ID=3)
     
     for i in range(times):
         ns.sim_reset()
-
-        # Hardware configuration
-
-        processorD=sendableQProcessor("processor_D", num_positions=1,
-                    mem_noise_models=None, phys_instructions=[
-                    PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-                    PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-                    PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                    PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
-                    topologies=[None, None, None, None])
-        
-        processorA=sendableQProcessor("processor_A", num_positions=1,
-                    mem_noise_models=None, phys_instructions=[
-                    PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-                    PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-                    PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                    PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
-                    topologies=[None, None, None, None])
-
-        #mem_noise_models=[DepolarNoiseModel(0)] * 100
-        processorB=sendableQProcessor("processor_B", num_positions=1,
-                    mem_noise_models=None, phys_instructions=[
-                    PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-                    PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-                    PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                    PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
-                    topologies=[None, None, None, None])
-
-        processorC=sendableQProcessor("processor_C", num_positions=1,
-                    mem_noise_models=None, phys_instructions=[
-                    PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-                    PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-                    PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                    PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)],
-                    topologies=[None, None, None, None])
-
-        node_D = Node("D",ID=3,port_names=["portQD_1"])
-        node_A = Node("A",ID=0,port_names=["portQA_1","portQA_2","portCA_1","portCA_2"])
-        node_B = Node("B",ID=1,port_names=["portQB_1","portQB_2","portCB_1","portCB_2","portCB_3"])
-        node_C = Node("C",ID=2,port_names=["portQC_1","portCC_1"])
-
-
-
-        # Quantum fibre
-        MyQfiberDA=QuantumFibre("QFibre_D->A", length=fibre_len
-            ,p_loss_init=0.04, p_loss_length=0.25)
-        MyQfiberAB=QuantumFibre("QFibre_A->B", length=fibre_len
-            ,p_loss_init=0.04, p_loss_length=0.25) 
-        MyQfiberBC=QuantumFibre("QFibre_B->C", length=fibre_len
-            ,p_loss_init=0.04, p_loss_length=0.25) #,quantum_loss_model="default"
-        # default value:
-        # p_loss_init=0.2, p_loss_length=0.25,depolar_rate=0, c=200000, models=None
-
-
-        # Classical fibre
-        MyCfiberCB=DirectConnection("CFibreConn_C->B",
-            ClassicalFibre("CFibre_C->B", length=fibre_len))
-        MyCfiberBA=DirectConnection("CFibreConn_B->A",
-            ClassicalFibre("CFibre_B->A", length=fibre_len))
-        MyCfiberAB=DirectConnection("CFibreConn_A->B",
-            ClassicalFibre("CFibre_A->B", length=fibre_len))
-
-        # Quantum connection
-        node_D.connect_to(node_A, MyQfiberDA,
-            local_port_name =node_D.ports["portQD_1"].name,
-            remote_port_name=node_A.ports["portQA_2"].name)
-        node_A.connect_to(node_B, MyQfiberAB,
-            local_port_name =node_A.ports["portQA_1"].name,
-            remote_port_name=node_B.ports["portQB_1"].name)
-        node_B.connect_to(node_C, MyQfiberBC,
-            local_port_name =node_B.ports["portQB_2"].name,
-            remote_port_name=node_C.ports["portQC_1"].name)
-
-        # Classical connection
-        node_C.connect_to(node_B, MyCfiberCB,
-            local_port_name="portCC_1", remote_port_name="portCB_3")
-        node_B.connect_to(node_A, MyCfiberBA,
-            local_port_name="portCB_1", remote_port_name="portCA_1")
-        node_A.connect_to(node_B, MyCfiberAB,
-            local_port_name="portCA_2", remote_port_name="portCB_2")
-
-
-
-        myQLine=QLine(node_A=node_A,processor_A=processorA
-            ,node_B=node_B,processor_B=processorB
-            ,node_C=node_C,processor_C=processorC
-            ,node_D=node_D,processor_D=processorD
-            ,portNameQD1="portQD_1"
-            ,portNameQA1="portQA_1",portNameQA2="portQA_2"
-            ,portNameCA1="portCA_1",portNameCA2="portCA_2"
-
-            ,portNameQB1="portQB_1",portNameQB2="portQB_2"
-            ,portNameCB1="portCB_1",portNameCB2="portCB_2",portNameCB3="portCB_3"
-
-            ,portNameQC1="portQC_1",portNameCC1="portCC_1")
-
-
-
-
+        myQLine=fQLine(nodeList=[node_A,node_B,node_C,node_D]
+            ,processorList=[processorA,processorB,processorC,processorD]
+            ,initNodeID=1,targetNodeID=3)
+        #myQLine.ForwardSetting(0,3)
         myQLine.start()
-
         ns.sim_run()
-        if myQLine.keyA and myQLine.keyA==myQLine.keyB:
-            QlineKeyListA.append(myQLine.keyA[0])
-            QlineKeyListB.append(myQLine.keyB[0])
-            totalTime+=myQLine.TimeD
-            
-        if myQLine.qubitLoss==True:
-            qubitLossCount+=1
+        if myQLine.keyAB != None :
+            keyListAB.append(myQLine.keyAB)
+            keyListBA.append(myQLine.keyBA)
+    print(keyListAB)
+    print(keyListBA)
 
 
-    '''
-    if totalTime !=0:
-        #key length per nanosec, proportion of qubit loss
-        return len(QlineKeyListA)/totalTime, 
-    else :
-        return 0, qubitLossCount/times
-    '''
-    
-    if times != 0:
-        return qubitLossCount/times
+#test
+#ns.logger.setLevel(1)
+run_QLine_sim(times=10,fibre_len=10**-3,noise_model=None) 
 
-# test
-#run_QLine_sim(times=1000,fibre_len=10**-3,noise_model=None) #DepolarNoiseModel(depolar_rate=500)
+
+# In[ ]:
 
 
 
-# In[10]:
 
 
-import matplotlib.pyplot as plt
-
-def QLine_plot():
-    x_axis=[]
-    y_axis=[]
-    
-    min_rate=0
-    max_rate=10000 
-    
-    
-    #DepolarNoiseModel(depolar_rate=100)
-    
-    
-    #first line
-    for i in range(min_rate,max_rate,100):
-        x_axis.append(i)
-        lossRate=run_QLine_sim(times=100,fibre_len=10**-3,noise_model=DepolarNoiseModel(depolar_rate=i))
-        y_axis.append(lossRate)  #Keyrate
-     
-    
-    plt.plot(x_axis, y_axis, 'go-') 
-    
-    
-    plt.title('Depolar Noise Effects on QLine')
-    plt.ylabel('qubit loss rate') #'key bit per nano-second '
-    plt.xlabel('depolar rate')
-
-    plt.legend()
-    plt.savefig('plot.png')
-    plt.show()
+# In[ ]:
 
 
 
-QLine_plot()
 
