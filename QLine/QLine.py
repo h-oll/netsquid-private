@@ -129,7 +129,7 @@ class QG_D(QuantumProgram):
 
 
 class QLine(Protocol):
-    def __init__(self,nodeList,processorList,initNodeID,targetNodeID,lossInd):
+    def __init__(self,nodeList,processorList,fibreLen,initNodeID,targetNodeID,lossInd):
         self.nodeList=nodeList
         self.processorList=processorList
         
@@ -137,7 +137,7 @@ class QLine(Protocol):
         self.targetNodeID=targetNodeID
         
         self.num_node=len(nodeList)
-        self.fibre_len=0
+        self.fibre_len=fibreLen
         
         # A rand
         self.r=randint(0,1)
@@ -333,7 +333,7 @@ class QLine(Protocol):
             senderNode=self.nodeList[self.initNodeID],inx=[0]
             ,receiveNode=self.nodeList[self.initNodeID+1])
         
-        self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
+        #self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
 
 # T  ==================================================
     def T_Fail(self):
@@ -373,7 +373,7 @@ class QLine(Protocol):
             self.processorList[self.targetNodeID].set_program_done_callback(
                 self.T_Send_D,once=True)
             
-        self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
+        #self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
         
     # T!=D
     def T_Send_D(self):
@@ -404,7 +404,7 @@ class QLine(Protocol):
         self.processorList[-1].set_program_done_callback(
             self.D_sendback,once=True)
         
-        self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
+        #self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
     
     # must
     def D_sendback(self):
@@ -453,10 +453,10 @@ class QLine(Protocol):
         #in nanoseconds    
 
 
-# In[21]:
+# In[4]:
 
 
-def run_QLine_sim(I,T,maxKeyLen=1,fibre_len=10**-3,noise_model=None,lossInd=0.25):
+def run_QLine_sim(I,T,maxKeyLen=1,fibreLen=10**-3,noise_model=None,lossInd=0.25):
     
     # Hardware configuration
     processorA=sendableQProcessor("processor_A", num_positions=1,
@@ -497,8 +497,8 @@ def run_QLine_sim(I,T,maxKeyLen=1,fibre_len=10**-3,noise_model=None,lossInd=0.25
     processorList=[processorA,processorB,processorC,processorD]
     
     
-    keyListI=[]
-    keyListT=[]
+    keyListI=[] # key for I, length unknown
+    keyListT=[] # key for T, length unknown
     totalTime=0.0
     
     
@@ -506,29 +506,21 @@ def run_QLine_sim(I,T,maxKeyLen=1,fibre_len=10**-3,noise_model=None,lossInd=0.25
         ns.sim_reset()
         myQLine=QLine(nodeList=nodeList
             ,processorList=processorList
+            ,fibreLen=fibreLen
             ,initNodeID=I,targetNodeID=T,lossInd=lossInd)
         myQLine.start()
         ns.sim_run()
         
-        if myQLine.keyI != None :
+        if myQLine.keyI == myQLine.keyT and myQLine.keyI:
             keyListI.append(myQLine.keyI)
             keyListT.append(myQLine.keyT)
-        totalTime+=myQLine.TimeD
+            totalTime+=myQLine.TimeD
             
-    #print(keyListI)
-    #print(keyListT)
     return keyListI,keyListT,totalTime
 
 #test
 #ns.logger.setLevel(1)
-
-#run_QLine_sim(0,3,maxKeyLen=10,fibre_len=10,noise_model=None,lossInd=0.5)
-
-
-# In[ ]:
-
-
-
+#run_QLine_sim(0,3,maxKeyLen=20,fibreLen=1,noise_model=None,lossInd=0.9)
 
 
 # In[5]:
@@ -537,11 +529,11 @@ def run_QLine_sim(I,T,maxKeyLen=1,fibre_len=10**-3,noise_model=None,lossInd=0.25
 # plot function
 import matplotlib.pyplot as plt
 
-def E91_plot():
+def QLinePlot():
     y_axis=[]
     x_axis=[]
-    run_times=100
-    maxKeyLen=200
+    run_times=50
+    maxKeyLen=100
     numNode=4
 
     # first curve
@@ -551,8 +543,8 @@ def E91_plot():
         for _ in range(run_times):
             
             key_I,key_T,costTime=run_QLine_sim(I=0,T=i,
-                maxKeyLen=maxKeyLen,fibre_len=10,
-                noise_model=None,lossInd=0.25) 
+                maxKeyLen=maxKeyLen,fibreLen=1,
+                noise_model=None,lossInd=0.1) 
             
             if key_I==key_T and key_I:  #else error happend, drop key, count 0 length
                 keylenSum+=len(key_I)
@@ -560,7 +552,7 @@ def E91_plot():
                     
         x_axis.append(i-1)
         if timeSum!=0:
-            y_axis.append(keylenSum/run_times/timeSum)
+            y_axis.append(keylenSum/run_times) #/timeSum*10**9
         else:
             y_axis.append(0)
 
@@ -577,8 +569,8 @@ def E91_plot():
         for _ in range(run_times):
             
             key_I,key_T,costTime=run_QLine_sim(I=0,T=i,
-                maxKeyLen=maxKeyLen,fibre_len=10,
-                noise_model=None,lossInd=0.5)
+                maxKeyLen=maxKeyLen,fibreLen=1,
+                noise_model=None,lossInd=0.7)
             
             
             if key_I==key_T and key_I:  #else error happend, drop key, count 0 length
@@ -587,14 +579,14 @@ def E91_plot():
                     
         x_axis.append(i-1)
         if timeSum!=0:
-            y_axis.append(keylenSum/run_times/timeSum)
+            y_axis.append(keylenSum/run_times) #/timeSum*10**9
         else:
             y_axis.append(0)
             
     plt.plot(x_axis, y_axis, 'bo-',label='high loss fibre')
     
         
-    plt.ylabel('key rate (bit/ns)') #average key length/Max qubits length
+    plt.ylabel('avg key /max key length (bit)') #average key length/Max qubits length
     plt.xlabel('distance (nodes in between)')
     
     
@@ -604,7 +596,7 @@ def E91_plot():
 
     
 
-E91_plot()
+QLinePlot()
 
 
 # In[ ]:
