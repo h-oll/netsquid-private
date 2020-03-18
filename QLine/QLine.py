@@ -12,13 +12,13 @@ Qubit sending direction
 
 According to roles in Qline, we have
 (O)------>(I)------>(T)------>(D)
-Indicating Origin,Initial,Target and Destiny, where (I) can be (O) 
+Indicating Origin,Initial,Target and Destination, where (I) can be (O) 
 as well as (T) being (D).
 
 Origin : First Node of this QLine.
 Initial: The initial node that start to generate a key pair. 
 Target : Target node that share a key pair with the initial node. 
-Destiny: Last node of this QLine.
+Destination: Last node of this QLine.
 
 
 
@@ -163,7 +163,7 @@ class QLine(Protocol):
             #print("create fibres")
             # create quantum fibre and connect
             self.QfibreList=[QuantumFibre(name="QF"+str(i),length=self.fibre_len,
-                p_loss_init=0.2,p_loss_length=lossInd) 
+                p_loss_init=lossInd,p_loss_length=0.25) 
                 for i in range(self.num_node-1)]
 
             for i in range(self.num_node-1):
@@ -543,8 +543,8 @@ def QLinePlot():
         for _ in range(run_times):
             
             key_I,key_T,costTime=run_QLine_sim(I=0,T=i,
-                maxKeyLen=maxKeyLen,fibreLen=1,
-                noise_model=None,lossInd=0.1) 
+                maxKeyLen=maxKeyLen,fibreLen=10**-3,
+                noise_model=None,lossInd=0.017) 
             
             if key_I==key_T and key_I:  #else error happend, drop key, count 0 length
                 keylenSum+=len(key_I)
@@ -552,7 +552,7 @@ def QLinePlot():
                     
         x_axis.append(i-1)
         if timeSum!=0:
-            y_axis.append(keylenSum/run_times) #/timeSum*10**9
+            y_axis.append(keylenSum/run_times/maxKeyLen) #/timeSum*10**9
         else:
             y_axis.append(0)
 
@@ -569,8 +569,8 @@ def QLinePlot():
         for _ in range(run_times):
             
             key_I,key_T,costTime=run_QLine_sim(I=0,T=i,
-                maxKeyLen=maxKeyLen,fibreLen=1,
-                noise_model=None,lossInd=0.7)
+                maxKeyLen=maxKeyLen,fibreLen=10**-3,
+                noise_model=None,lossInd=0.5)
             
             
             if key_I==key_T and key_I:  #else error happend, drop key, count 0 length
@@ -579,14 +579,14 @@ def QLinePlot():
                     
         x_axis.append(i-1)
         if timeSum!=0:
-            y_axis.append(keylenSum/run_times) #/timeSum*10**9
+            y_axis.append(keylenSum/run_times/maxKeyLen) #/timeSum*10**9
         else:
             y_axis.append(0)
             
     plt.plot(x_axis, y_axis, 'bo-',label='high loss fibre')
     
         
-    plt.ylabel('avg key /max key length (bit)') #average key length/Max qubits length
+    plt.ylabel('avg/max key length ') #average key length/Max qubits length
     plt.xlabel('distance (nodes in between)')
     
     
