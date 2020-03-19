@@ -20,10 +20,8 @@ Initial: The initial node that start to generate a key pair.
 Target : Target node that share a key pair with the initial node. 
 Destination: Last node of this QLine.
 
-
-
 Objective:
-Establishes a shared key between A and B. 
+Establishes a shared key between any two nodes in QLine. 
 '''
 
 import numpy as np
@@ -216,16 +214,12 @@ class QLine(Protocol):
         NodeID_Y: The node id which ends the forward. 
     '''
     def ForwardSetting(self,NodeID_X,NodeID_Y):
-        #print("ForwardSetting")
         
         if NodeID_Y-NodeID_X>=1:
-            #print(NodeID_X,NodeID_Y)
             if not self.nodeList[NodeID_X+1].get_conn_port(
                 NodeID_X,label='Q').forwarded_ports: 
                 # if not done before(for multiple bits)
                 for i in range(NodeID_X,NodeID_Y): # loop times=NodeID_Y-NodeID_X
-                    #print(i)
-                    #print(self.QfibreList)
                     self.nodeList[i].get_conn_port(i-1,label='Q').forward_input(
                         self.QfibreList[i].ports["send"]) 
                     
@@ -256,7 +250,7 @@ class QLine(Protocol):
         # T callback
         self.nodeList[self.targetNodeID].get_conn_port(
             self.targetNodeID-1,label='Q').bind_input_handler(
-            self.T_Rec_HX) #!!
+            self.T_Rec_HX) 
         
         # record time to begin
         self.TimeF=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)
@@ -270,7 +264,6 @@ class QLine(Protocol):
     
     # must
     def O_QubitGen(self):
-        #print("O_Qubit_prepare")
         myQG_O=QG_O()
         self.processorList[0].execute_program(
             myQG_O,qubit_mapping=[0])
@@ -287,7 +280,6 @@ class QLine(Protocol):
     
     # O != I
     def O_Send_I(self):
-        #print("O_QubitSend")
         # I callback
         self.nodeList[self.initNodeID].get_conn_port(
             self.initNodeID-1,label='Q').bind_input_handler(
@@ -304,13 +296,11 @@ class QLine(Protocol):
 
     # O != I
     def I_rec(self,qubit):
-        #print("I_rec")
         self.processorList[self.initNodeID].put(qubits=qubit.items)
         self.I_QG_HX()
         
     # must
     def I_QG_HX(self):
-        #print("I_QG_HX")
         myQG_I=QG_I(self.r,self.b)
         self.processorList[self.initNodeID].execute_program(
             myQG_I,qubit_mapping=[0])
@@ -322,7 +312,6 @@ class QLine(Protocol):
 
     # must
     def I_QubitSend(self):
-        #print("I_QubitSend")
         
         # I callback
         self.nodeList[self.initNodeID].get_conn_port(
@@ -332,8 +321,7 @@ class QLine(Protocol):
         self.processorList[self.initNodeID].sendfromMem(
             senderNode=self.nodeList[self.initNodeID],inx=[0]
             ,receiveNode=self.nodeList[self.initNodeID+1])
-        
-        #self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
+    
 
 # T  ==================================================
     def T_Fail(self):
@@ -342,7 +330,6 @@ class QLine(Protocol):
         
     # must
     def T_Rec_HX(self,qubit):
-        #print("T_Rec_HX: ",qubit.items)
         self.processorList[self.targetNodeID].put(qubits=qubit.items)
         self.myQG_T=QG_T(self.c,self.s)
         
@@ -355,7 +342,6 @@ class QLine(Protocol):
         # if T==D 
         if self.targetNodeID==len(self.nodeList)-1: 
             # send s R back to T then I
-            #len(self.nodeList)-1==self.targetNodeID
             self.processorList[self.targetNodeID].set_program_done_callback(
                 self.D_QG_measure,once=True)
             
@@ -377,7 +363,6 @@ class QLine(Protocol):
         
     # T!=D
     def T_Send_D(self):
-        #print("T_Send_D")
         self.processorList[self.targetNodeID].sendfromMem(
             senderNode=self.nodeList[self.targetNodeID],inx=[0]
             ,receiveNode=self.nodeList[self.targetNodeID+1])
@@ -389,13 +374,11 @@ class QLine(Protocol):
 
     # if T!=D
     def D_rec(self,qubit):
-        #print("D_rec")
         self.processorList[-1].put(qubits=qubit.items)
         self.D_QG_measure()
         
     # must
     def D_QG_measure(self):
-        # print("D_QG_measure")
         self.myQG_D=QG_D()
         self.processorList[-1].execute_program(
             self.myQG_D,qubit_mapping=[0])
@@ -408,7 +391,6 @@ class QLine(Protocol):
     
     # must
     def D_sendback(self):
-        #print("D_sendback")
         self.R=getPGoutput(self.myQG_D,'R')
         self.nodeList[len(self.nodeList)-1].get_conn_port(
             len(self.nodeList)-2,label='C').tx_output([self.s,self.R])
@@ -420,22 +402,18 @@ class QLine(Protocol):
 
     # receive R then send back
     def T_recR(self,R):
-        #print("T_recR")
         self.nodeList[self.targetNodeID].get_conn_port(
             self.targetNodeID-1,label='C').tx_output([self.s,R.items[0]])
 
 
 # C2 ==================================================    
     def I_Compare(self,alist): # receives [self.s,self.R]
-        #print("InitNodeCompare")
         if alist.items[0]==self.r: # if s == r
             self.keyI=self.b
         self.I_Response()
 
         
     def I_Response(self):
-        #print("InitNodeResponse")
-        
         # callback T compare
         self.nodeList[self.targetNodeID].get_conn_port(
             self.targetNodeID-1, label='C').bind_input_handler(self.T_Compare)
@@ -444,8 +422,6 @@ class QLine(Protocol):
 
 # C3 =====================================================================
     def T_Compare(self,r):
-        #print("T_Compare")
-        
         self.qubitLoss=False
         if self.s==r.items[0]:
             self.keyT=self.R ^ self.c
