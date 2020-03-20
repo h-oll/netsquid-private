@@ -21,7 +21,13 @@ Target : Target node that share a key pair with the initial node.
 Destination: Last node of this QLine.
 
 Objective:
+<<<<<<< HEAD
+Establishes a shared key between any two nodes. 
+Overall 5% error and 1%  qubit loss applied for four nodes.
+
+=======
 Establishes a shared key between any two nodes in QLine. 
+>>>>>>> 695c5c240ea9aad1c1802aad4f1060bba1711a12
 '''
 
 import numpy as np
@@ -41,6 +47,7 @@ from netsquid.components.qprocessor import *
 from netsquid.components.instructions import *
 from netsquid.components.qprogram import *
 from netsquid.components.models.qerrormodels import *
+#from netsquid.components.models.qerrormodels import DepolarNoiseModel
 from random import randint
 
 
@@ -219,7 +226,11 @@ class QLine(Protocol):
             if not self.nodeList[NodeID_X+1].get_conn_port(
                 NodeID_X,label='Q').forwarded_ports: 
                 # if not done before(for multiple bits)
+<<<<<<< HEAD
+                for i in range(NodeID_X,NodeID_Y): # 
+=======
                 for i in range(NodeID_X,NodeID_Y): # loop times=NodeID_Y-NodeID_X
+>>>>>>> 695c5c240ea9aad1c1802aad4f1060bba1711a12
                     self.nodeList[i].get_conn_port(i-1,label='Q').forward_input(
                         self.QfibreList[i].ports["send"]) 
                     
@@ -230,7 +241,6 @@ class QLine(Protocol):
 
 
     def ForwardSettingBK(self,X,Y): # Y can not be D
-        #print("ForwardBK id link ",Y,"to ",X)
         if Y-X>=1:
             for i in range(Y,X,-1): # loop times = Y-X, i=Y,Y-1...X+1
             
@@ -250,7 +260,11 @@ class QLine(Protocol):
         # T callback
         self.nodeList[self.targetNodeID].get_conn_port(
             self.targetNodeID-1,label='Q').bind_input_handler(
+<<<<<<< HEAD
+            self.T_Rec_HX)
+=======
             self.T_Rec_HX) 
+>>>>>>> 695c5c240ea9aad1c1802aad4f1060bba1711a12
         
         # record time to begin
         self.TimeF=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)
@@ -359,7 +373,6 @@ class QLine(Protocol):
             self.processorList[self.targetNodeID].set_program_done_callback(
                 self.T_Send_D,once=True)
             
-        #self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
         
     # T!=D
     def T_Send_D(self):
@@ -387,8 +400,7 @@ class QLine(Protocol):
         self.processorList[-1].set_program_done_callback(
             self.D_sendback,once=True)
         
-        #self.TimeD=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)-self.TimeF
-    
+        
     # must
     def D_sendback(self):
         self.R=getPGoutput(self.myQG_D,'R')
@@ -422,6 +434,10 @@ class QLine(Protocol):
 
 # C3 =====================================================================
     def T_Compare(self,r):
+<<<<<<< HEAD
+        
+=======
+>>>>>>> 695c5c240ea9aad1c1802aad4f1060bba1711a12
         self.qubitLoss=False
         if self.s==r.items[0]:
             self.keyT=self.R ^ self.c
@@ -432,42 +448,56 @@ class QLine(Protocol):
 # In[4]:
 
 
-def run_QLine_sim(I,T,maxKeyLen=1,fibreLen=10**-3,noise_model=None,lossInd=0.25):
+def run_QLine_sim(I,T,maxKeyLen=1,fibreLen=10**-3,
+    memNoise=None,noise_model=None,lossInd=0.25):
     
     # Hardware configuration
-    processorA=sendableQProcessor("processor_A", num_positions=1,
-                mem_noise_models=None, phys_instructions=[
+    processorA=sendableQProcessor("processor_A", num_positions=2,
+                mem_noise_models=memNoise, phys_instructions=[
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
+                PhysicalInstruction(INSTR_X, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=5
+                    , q_noise_model=noise_model, parallel=True)])
 
     #mem_noise_models=[DepolarNoiseModel(0)] * 100
-    processorB=sendableQProcessor("processor_B", num_positions=1,
-                mem_noise_models=None, phys_instructions=[
+    processorB=sendableQProcessor("processor_B", num_positions=2,
+                mem_noise_models=memNoise, phys_instructions=[
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
+                PhysicalInstruction(INSTR_X, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=5
+                    , q_noise_model=noise_model, parallel=True)])
 
-    processorC=sendableQProcessor("processor_C", num_positions=1,
-                mem_noise_models=None, phys_instructions=[
+    processorC=sendableQProcessor("processor_C", num_positions=2,
+                mem_noise_models=memNoise, phys_instructions=[
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
+                PhysicalInstruction(INSTR_X, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=5
+                    , q_noise_model=noise_model, parallel=True)])
 
-    processorD=sendableQProcessor("processor_D", num_positions=1,
-                mem_noise_models=None, phys_instructions=[
+    processorD=sendableQProcessor("processor_D", num_positions=2,
+                mem_noise_models=memNoise, phys_instructions=[
                 PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-                PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-                PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True)])
+                PhysicalInstruction(INSTR_X, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=5
+                    , q_noise_model=noise_model, parallel=True)])
+    
+    processorE=sendableQProcessor("processor_E", num_positions=2,
+                mem_noise_models=memNoise, phys_instructions=[
+                PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
+                PhysicalInstruction(INSTR_X, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_H, duration=2, q_noise_model=noise_model),
+                PhysicalInstruction(INSTR_MEASURE, duration=5
+                    ,q_noise_model=noise_model, parallel=True)])
 
     node_A = Node("A",ID=0)
     node_B = Node("B",ID=1)
     node_C = Node("C",ID=2)
     node_D = Node("D",ID=3)
+    #node_E = Node("E",ID=4)
     
     nodeList=[node_A,node_B,node_C,node_D]
     processorList=[processorA,processorB,processorC,processorD]
@@ -476,7 +506,7 @@ def run_QLine_sim(I,T,maxKeyLen=1,fibreLen=10**-3,noise_model=None,lossInd=0.25)
     keyListI=[] # key for I, length unknown
     keyListT=[] # key for T, length unknown
     totalTime=0.0
-    
+    errorTimes=0
     
     for i in range(maxKeyLen):
         ns.sim_reset()
@@ -487,19 +517,26 @@ def run_QLine_sim(I,T,maxKeyLen=1,fibreLen=10**-3,noise_model=None,lossInd=0.25)
         myQLine.start()
         ns.sim_run()
         
-        if myQLine.keyI == myQLine.keyT and myQLine.keyI:
+        if myQLine.keyI == myQLine.keyT and myQLine.keyI!=None:
             keyListI.append(myQLine.keyI)
             keyListT.append(myQLine.keyT)
             totalTime+=myQLine.TimeD
+        
+        elif myQLine.keyI != myQLine.keyT:
+            errorTimes+=1
+            #print(myQLine.keyI)
+            #print(myQLine.keyT)
+        
             
-    return keyListI,keyListT,totalTime
+    return keyListI,keyListT,totalTime,errorTimes
 
 #test
 #ns.logger.setLevel(1)
-#run_QLine_sim(0,3,maxKeyLen=20,fibreLen=1,noise_model=None,lossInd=0.9)
+#run_QLine_sim(0,2,maxKeyLen=50,fibreLen=0
+#    ,noise_model=T1T2NoiseModel(T1=1000,T2=0.0001),lossInd=0.1)
 
 
-# In[5]:
+# In[8]:
 
 
 # plot function
@@ -516,25 +553,29 @@ def QLinePlot():
     for i in range(1,numNode):
         keylenSum=0.0
         timeSum=0.0
+        errorSum=0
         for _ in range(run_times):
             
-            key_I,key_T,costTime=run_QLine_sim(I=0,T=i,
-                maxKeyLen=maxKeyLen,fibreLen=10**-3,
-                noise_model=None,lossInd=0.017) 
+            key_I,key_T,costTime,errortime=run_QLine_sim(I=0,T=i,
+                maxKeyLen=maxKeyLen,fibreLen=10**-9,
+                noise_model=T1T2NoiseModel(T1=1000000,T2=4.5),lossInd=0.0033) 
             
-            if key_I==key_T and key_I:  #else error happend, drop key, count 0 length
-                keylenSum+=len(key_I)
-                timeSum+=costTime
+            #if key_I==key_T and key_I:  #else error happend, drop key, count 0 length
+            keylenSum+=len(key_I)
+            timeSum+=costTime
+            errorSum+=errortime
                     
+        #x_axis.append(10**i)
         x_axis.append(i-1)
         if timeSum!=0:
-            y_axis.append(keylenSum/run_times/maxKeyLen) #/timeSum*10**9
+            y_axis.append(errorSum/run_times/maxKeyLen)
+            #y_axis.append(keylenSum/run_times/maxKeyLen) #/timeSum*10**9
         else:
             y_axis.append(0)
 
     plt.plot(x_axis, y_axis, 'go-',label='default fibre') 
     
-    
+    '''
     y_axis.clear() 
     x_axis.clear()
     
@@ -542,28 +583,32 @@ def QLinePlot():
     for i in range(1,numNode):
         keylenSum=0.0
         timeSum=0.0
+        errorSum=0
         for _ in range(run_times):
             
-            key_I,key_T,costTime=run_QLine_sim(I=0,T=i,
-                maxKeyLen=maxKeyLen,fibreLen=10**-3,
-                noise_model=None,lossInd=0.5)
+            key_I,key_T,costTime,errortime=run_QLine_sim(I=0,T=i,
+                maxKeyLen=maxKeyLen,fibreLen=10**-9,
+                noise_model=T1T2NoiseModel(T1=10000,T2=1),lossInd=0.0033)
             
             
-            if key_I==key_T and key_I:  #else error happend, drop key, count 0 length
-                keylenSum+=len(key_I)
-                timeSum+=costTime
+            #if key_I==key_T and key_I!=None:  
+            #else error happend, drop key, count 0 length
+            keylenSum+=len(key_I)
+            timeSum+=costTime
+            errorSum+=errortime
                     
         x_axis.append(i-1)
         if timeSum!=0:
-            y_axis.append(keylenSum/run_times/maxKeyLen) #/timeSum*10**9
+            y_axis.append(errorSum/run_times/maxKeyLen)
+            #y_axis.append(keylenSum/run_times/maxKeyLen) #/timeSum*10**9
         else:
             y_axis.append(0)
             
     plt.plot(x_axis, y_axis, 'bo-',label='high loss fibre')
-    
+    '''
         
-    plt.ylabel('avg/max key length ') #average key length/Max qubits length
-    plt.xlabel('distance (nodes in between)')
+    plt.ylabel('avg error rate') #average key length/Max qubits length
+    plt.xlabel('distance (nodes in between)')#distance (nodes in between)
     
     
     plt.legend()
@@ -573,6 +618,12 @@ def QLinePlot():
     
 
 QLinePlot()
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
