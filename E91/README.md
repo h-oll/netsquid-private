@@ -8,16 +8,15 @@ E91 protocol is one of Quantum Key Distribution that generate a key pair within 
 
 ## To Do
 
-- Add quantum processor interface when Alice measure qubits.
+- Add graph.
 
 ## Status
 
-Now The protocol is able to run with noises applied on operations/measurements when:
-
-- Alice prepare qubits.
-- Bob measure qubits.
+E91 function normally with NS 8.0 protocol interface.
+Noises possible on quantum processors and fibres.
 
 17/02/2020
+
 - Bug fixed and be able to handle various qubit losses.
 
 14/02/2020
@@ -25,7 +24,11 @@ Now The protocol is able to run with noises applied on operations/measurements w
 - Quantum Processor interface applied when Bob measure.
 
 
-7/02/2020
+07/02/2020
 
 - Quantum Processor interface applied when Alice prepares qubits.
 - Alice and Bob measure in normal interface.
+
+01/04/2020
+
+- Protocol interface upgrade to 8.0.
