@@ -196,7 +196,6 @@ class AliceProtocol(NodeProtocol):
         
         
         
-        
     def __init__(self,node,processor,num_bits,
                 port_names=["portQA_1","portCA_1","portCA_2"]):
         super().__init__()
@@ -240,18 +239,17 @@ class AliceProtocol(NodeProtocol):
         self.processor.set_program_done_callback(
             self.A_getPGoutput,once=True)
         
+        
         # send A basis to B
         self.node.ports["portCA_2"].tx_output(self.basisList)
         
         
         # compare basis
-        
         yield self.await_program(processor=self.processor)
         self.loc_mesRes=Compare_basis(self.basisList,basis_B,self.loc_mesRes)
         
-        
         self.key=''.join(map(str, self.loc_mesRes))
-        print("A key:",self.key)
+        #print("A key:",self.key)
 
         
 
@@ -299,7 +297,8 @@ class BobProtocol(NodeProtocol):
         self.processor=processor
         self.qList=None
         #self.basisList=Random_basis_gen(self.num_bits)
-        self.loc_measRes=[-1]*self.num_bits   # init value assume that all qubits are lost
+        self.loc_measRes=[-1]*self.num_bits   
+        # init value assume that all qubits are lost
         self.key=None
         self.PG_B=None
         self.lossList=[]
@@ -331,8 +330,6 @@ class BobProtocol(NodeProtocol):
         
         # get meas result
         self.processor.set_program_done_callback(self.B_getPGoutput,once=True)
-        #yield self.await_program(processor=self.processor)
-        #self.loc_measRes=getPGoutput(self.myQG_B_measure)
         
         yield self.await_program(processor=self.processor)
         
@@ -357,91 +354,151 @@ class BobProtocol(NodeProtocol):
         
         self.loc_measRes=Compare_basis(self.basisList,basis_A,self.loc_measRes)
         
-        
         self.key=''.join(map(str, self.loc_measRes))
-        print("B key:",self.key)
-        
+        #print("B key:",self.key)
         
 
 
 # In[6]:
 
 
-ns.sim_reset()
+# implementation & hardware configure
+def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
+               loss_init=0,loss_len=0):
+    
+    MyE91List_A=[]  # local protocol list A
+    MyE91List_B=[]  # local protocol list B
+    
+    for i in range(runtimes): 
+        
+        ns.sim_reset()
+
+        # nodes====================================================================
+
+        nodeA = Node("Alice", port_names=["portQA_1","portCA_1","portCA_2"])
+        nodeB = Node("Bob"  , port_names=["portQB_1","portCB_1","portCB_2"])
+
+        # processors====================================================================
+        noise_model=None
+        Alice_processor=sendableQProcessor("processor_A", num_positions=100,
+            mem_noise_models=None, phys_instructions=[
+            PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
+            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=noise_model),
+            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
+            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
+            PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
 
 
-# nodes====================================================================
-
-nodeA = Node("Alice", port_names=["portQA_1","portCA_1","portCA_2"])
-nodeB = Node("Bob"  , port_names=["portQB_1","portCB_1","portCB_2"])
-
-# processors====================================================================
-noise_model=None
-Alice_processor=sendableQProcessor("processor_A", num_positions=100,
-    mem_noise_models=None, phys_instructions=[
-    PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-    PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-    PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=noise_model),
-    PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-    PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
-    PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
-    PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
+        Bob_processor=sendableQProcessor("processor_B", num_positions=100,
+            mem_noise_models=None, phys_instructions=[
+            PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
+            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=noise_model),
+            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
+            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
+            PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
 
 
-Bob_processor=sendableQProcessor("processor_B", num_positions=100,
-    mem_noise_models=None, phys_instructions=[
-    PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-    PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-    PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=noise_model),
-    PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-    PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
-    PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
-    PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
+        # fibres=======================================================================
+
+        MyQfiber=QuantumFibre("QFibre_A->B", length=fibre_len,quantum_loss_model=None,
+            p_loss_init=loss_init, p_loss_length=loss_len) 
+        nodeA.connect_to(nodeB, MyQfiber,
+            local_port_name =nodeA.ports["portQA_1"].name,
+            remote_port_name=nodeB.ports["portQB_1"].name)
 
 
-# fibres=======================================================================
+        MyCfiber =DirectConnection("CFibreConn_B->A",
+                    ClassicalFibre("CFibre_B->A", length=fibre_len))
+        MyCfiber2=DirectConnection("CFibreConn_A->B",
+                    ClassicalFibre("CFibre_A->B", length=fibre_len))
 
-fibre_len=1
-MyQfiber=QuantumFibre("QFibre_A->B", length=fibre_len,quantum_loss_model=None,
-    p_loss_init=0, p_loss_length=0) 
-nodeA.connect_to(nodeB, MyQfiber,
-    local_port_name =nodeA.ports["portQA_1"].name,
-    remote_port_name=nodeB.ports["portQB_1"].name)
-
-
-MyCfiber =DirectConnection("CFibreConn_B->A",
-            ClassicalFibre("CFibre_B->A", length=fibre_len))
-MyCfiber2=DirectConnection("CFibreConn_A->B",
-            ClassicalFibre("CFibre_A->B", length=fibre_len))
-
-nodeB.connect_to(nodeA, MyCfiber,
-                    local_port_name="portCB_1", remote_port_name="portCA_1")
-nodeA.connect_to(nodeB, MyCfiber2,
-                    local_port_name="portCA_2", remote_port_name="portCB_2")
+        nodeB.connect_to(nodeA, MyCfiber,
+                            local_port_name="portCB_1", remote_port_name="portCA_1")
+        nodeA.connect_to(nodeB, MyCfiber2,
+                            local_port_name="portCA_2", remote_port_name="portCB_2")
 
 
+        Alice_protocol = AliceProtocol(nodeA,Alice_processor,num_bits)
+        Bob_protocol = BobProtocol(nodeB,Bob_processor,num_bits)
+        Alice_protocol.start()
+        Bob_protocol.start()
+        #ns.logger.setLevel(1)
+        stats = ns.sim_run()
+        
+        MyE91List_A.append(Alice_protocol.key)
+        MyE91List_B.append(Bob_protocol.key)
+        
+    return MyE91List_A, MyE91List_B
+    
+
+#run_E91_sim(runtimes=2,num_bits=32,fibre_len=10**-9,noise_model=None)
+    
 
 
 # In[7]:
 
 
-num_bits=40
-Alice_protocol = AliceProtocol(nodeA,Alice_processor,num_bits)
-Bob_protocol = BobProtocol(nodeB,Bob_processor,num_bits)
-Alice_protocol.start()
-Bob_protocol.start()
-#ns.logger.setLevel(1)
-stats = ns.sim_run()
+# plot function
+import matplotlib.pyplot as plt
 
+def E91_plot():
+    y_axis=[]
+    x_axis=[]
+    run_times=70
+    num_bits=50
+    min_dis=1
+    max_dis=10
 
-# In[ ]:
+    # first curve
+    for i in range(min_dis,max_dis):
+        key_sum=0.0
+        x_axis.append(i/10)
+        key_list_A,key_list_B=run_E91_sim(run_times,num_bits,i/10
+            ,noise_model=None,loss_init=0,loss_len=0.2) 
+        #feed runtimes, numberof bits and distance, use default loss model
+        #print("key_list_A: ",key_list_A)
+        for keyA,keyB in zip(key_list_A,key_list_B):
+            if keyA==keyB and keyA != None:  
+                #print("len keyA:",len(keyA))
+                key_sum+=len(keyA)
+        y_axis.append(key_sum/run_times/num_bits)
+        
+    plt.plot(x_axis, y_axis, 'go-',label='loss_len=0.2')
+    
+    
+    y_axis.clear() 
+    x_axis.clear()
+    
+    
+    # second curve
+    for i in range(min_dis,max_dis):
+        key_sum=0.0
+        x_axis.append(i/10)
+        key_list_A,key_list_B=run_E91_sim(run_times,num_bits,i/10
+            ,noise_model=None,loss_init=0,loss_len=0.4) 
+        
+        for keyA,keyB in zip(key_list_A,key_list_B):
+            if keyA==keyB and keyA != None: 
+                key_sum+=len(keyA)
+        y_axis.append(key_sum/run_times/num_bits)
+        
+    plt.plot(x_axis, y_axis, 'bo-',label='loss_len=0.4')
+    
+    
+    
+    plt.ylabel('average key length/original qubits length')
+    plt.xlabel('fibre lenth (km)')
+    
+    
+    plt.legend()
+    plt.savefig('plot.png')
+    plt.show()
 
+    
 
-
-
-
-# In[ ]:
-
-
-
+E91_plot()
 
