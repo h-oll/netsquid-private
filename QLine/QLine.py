@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[16]:
+
 
 
 '''
@@ -21,13 +22,7 @@ Target : Target node that share a key pair with the initial node.
 Destination: Last node of this QLine.
 
 Objective:
-<<<<<<< HEAD
-Establishes a shared key between any two nodes. 
-Overall 5% error and 1%  qubit loss applied for four nodes.
-
-=======
 Establishes a shared key between any two nodes in QLine. 
->>>>>>> 695c5c240ea9aad1c1802aad4f1060bba1711a12
 '''
 
 import numpy as np
@@ -51,7 +46,7 @@ from netsquid.components.models.qerrormodels import *
 from random import randint
 
 
-# In[2]:
+# In[17]:
 
 
 # get output value from a Qprogram
@@ -130,11 +125,13 @@ class QG_D(QuantumProgram):
         yield self.run(parallel=False)
 
 
-# In[3]:
+# In[18]:
+
 
 
 class QLine(Protocol):
-    def __init__(self,nodeList,processorList,fibreLen,initNodeID,targetNodeID,lossInd):
+    def __init__(self,nodeList,processorList
+        ,fibreLen,initNodeID,targetNodeID,lossInd,lossLen):
         self.nodeList=nodeList
         self.processorList=processorList
         
@@ -226,13 +223,9 @@ class QLine(Protocol):
             if not self.nodeList[NodeID_X+1].get_conn_port(
                 NodeID_X,label='Q').forwarded_ports: 
                 # if not done before(for multiple bits)
-<<<<<<< HEAD
                 for i in range(NodeID_X,NodeID_Y): # 
-=======
-                for i in range(NodeID_X,NodeID_Y): # loop times=NodeID_Y-NodeID_X
->>>>>>> 695c5c240ea9aad1c1802aad4f1060bba1711a12
                     self.nodeList[i].get_conn_port(i-1,label='Q').forward_input(
-                        self.QfibreList[i].ports["send"]) 
+                    self.QfibreList[i].ports["send"]) 
                     
                     self.nodeList[i].get_conn_port(
                         i-1,label='C').forward_input(
@@ -260,11 +253,7 @@ class QLine(Protocol):
         # T callback
         self.nodeList[self.targetNodeID].get_conn_port(
             self.targetNodeID-1,label='Q').bind_input_handler(
-<<<<<<< HEAD
             self.T_Rec_HX)
-=======
-            self.T_Rec_HX) 
->>>>>>> 695c5c240ea9aad1c1802aad4f1060bba1711a12
         
         # record time to begin
         self.TimeF=ns.util.simtools.sim_time(magnitude=ns.NANOSECOND)
@@ -336,7 +325,6 @@ class QLine(Protocol):
             senderNode=self.nodeList[self.initNodeID],inx=[0]
             ,receiveNode=self.nodeList[self.initNodeID+1])
     
-
 # T  ==================================================
     def T_Fail(self):
         self.qubitLoss=True
@@ -434,10 +422,6 @@ class QLine(Protocol):
 
 # C3 =====================================================================
     def T_Compare(self,r):
-<<<<<<< HEAD
-        
-=======
->>>>>>> 695c5c240ea9aad1c1802aad4f1060bba1711a12
         self.qubitLoss=False
         if self.s==r.items[0]:
             self.keyT=self.R ^ self.c
@@ -445,11 +429,12 @@ class QLine(Protocol):
         #in nanoseconds    
 
 
-# In[4]:
+# In[39]:
+
 
 
 def run_QLine_sim(I,T,maxKeyLen=1,fibreLen=10**-3,
-    memNoise=None,noise_model=None,lossInd=0.25):
+    memNoise=None,noise_model=None,lossInd=0.2,lossLen=0.25):
     
     # Hardware configuration
     processorA=sendableQProcessor("processor_A", num_positions=2,
@@ -513,7 +498,7 @@ def run_QLine_sim(I,T,maxKeyLen=1,fibreLen=10**-3,
         myQLine=QLine(nodeList=nodeList
             ,processorList=processorList
             ,fibreLen=fibreLen
-            ,initNodeID=I,targetNodeID=T,lossInd=lossInd)
+            ,initNodeID=I,targetNodeID=T,lossInd=lossInd,lossLen=lossLen)
         myQLine.start()
         ns.sim_run()
         
@@ -528,26 +513,31 @@ def run_QLine_sim(I,T,maxKeyLen=1,fibreLen=10**-3,
             #print(myQLine.keyT)
         
             
-    return keyListI,keyListT,totalTime,errorTimes
+    return keyListI,keyListT,totalTime   #,errorTimes
 
 #test
 #ns.logger.setLevel(1)
-#run_QLine_sim(0,2,maxKeyLen=50,fibreLen=0
-#    ,noise_model=T1T2NoiseModel(T1=1000,T2=0.0001),lossInd=0.1)
+'''
+run_QLine_sim(0,3,maxKeyLen=100,fibreLen=10
+    ,noise_model=None
+    ,lossInd=0.2,lossLen=0.25)
+'''
 
 
-# In[8]:
+# In[40]:
 
 
 # plot function
 import matplotlib.pyplot as plt
 
 def QLinePlot():
-    y_axis=[]
+    y_axis_keyRate=[]
+    y_axis_QubitEfficiencyRate=[]
     x_axis=[]
     run_times=50
     maxKeyLen=100
     numNode=4
+    fibreLen=10
 
     # first curve
     for i in range(1,numNode):
@@ -556,58 +546,28 @@ def QLinePlot():
         errorSum=0
         for _ in range(run_times):
             
-            key_I,key_T,costTime,errortime=run_QLine_sim(I=0,T=i,
-                maxKeyLen=maxKeyLen,fibreLen=10**-9,
-                noise_model=T1T2NoiseModel(T1=1000000,T2=4.5),lossInd=0.0033) 
+            key_I,key_T,costTime=run_QLine_sim(I=0,T=i,
+                maxKeyLen=maxKeyLen,fibreLen=fibreLen,
+                noise_model=None) 
             
             #if key_I==key_T and key_I:  #else error happend, drop key, count 0 length
             keylenSum+=len(key_I)
             timeSum+=costTime
-            errorSum+=errortime
                     
         #x_axis.append(10**i)
         x_axis.append(i-1)
         if timeSum!=0:
-            y_axis.append(errorSum/run_times/maxKeyLen)
+            y_axis_QubitEfficiencyRate.append(keylenSum/run_times/maxKeyLen)
+            #y_axis_keyRate.append(keylenSum/run_times/timeSum)
             #y_axis.append(keylenSum/run_times/maxKeyLen) #/timeSum*10**9
         else:
-            y_axis.append(0)
+            y_axis_QubitEfficiencyRate.append(0)
+            #y_axis_keyRate.append(0)
 
-    plt.plot(x_axis, y_axis, 'go-',label='default fibre') 
-    
-    '''
-    y_axis.clear() 
-    x_axis.clear()
-    
-    # second curve
-    for i in range(1,numNode):
-        keylenSum=0.0
-        timeSum=0.0
-        errorSum=0
-        for _ in range(run_times):
-            
-            key_I,key_T,costTime,errortime=run_QLine_sim(I=0,T=i,
-                maxKeyLen=maxKeyLen,fibreLen=10**-9,
-                noise_model=T1T2NoiseModel(T1=10000,T2=1),lossInd=0.0033)
-            
-            
-            #if key_I==key_T and key_I!=None:  
-            #else error happend, drop key, count 0 length
-            keylenSum+=len(key_I)
-            timeSum+=costTime
-            errorSum+=errortime
-                    
-        x_axis.append(i-1)
-        if timeSum!=0:
-            y_axis.append(errorSum/run_times/maxKeyLen)
-            #y_axis.append(keylenSum/run_times/maxKeyLen) #/timeSum*10**9
-        else:
-            y_axis.append(0)
-            
-    plt.plot(x_axis, y_axis, 'bo-',label='high loss fibre')
-    '''
+    plt.plot(x_axis, y_axis_QubitEfficiencyRate, 'go-',label='Qubit Efficiency Rate') 
+    #plt.plot(x_axis, y_axis_keyRate, 'bo-',label='Key Rate') 
         
-    plt.ylabel('avg error rate') #average key length/Max qubits length
+    plt.ylabel('Qubit Efficiency Rate') #average key length/Max qubits length
     plt.xlabel('distance (nodes in between)')#distance (nodes in between)
     
     
@@ -618,12 +578,6 @@ def QLinePlot():
     
 
 QLinePlot()
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:
