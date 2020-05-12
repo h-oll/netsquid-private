@@ -29,8 +29,9 @@ The protocol is able to generate a pair of symmetric key between each of the two
 
 
 ## To Do
-- Add more physical parameters.
+- To be discussed.
 
 ## Status
 - The QLine functionality is completed.
 It is able to generate a pair of key between any given nodes in Qline with Noise/Loss models applied.
+04042020- Adopt hardware parameters according to lab in VeriQloud.
