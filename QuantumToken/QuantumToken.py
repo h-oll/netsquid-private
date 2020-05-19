@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[12]:
 
 
 import numpy as np
@@ -19,7 +19,7 @@ from random import seed, randint
 import time
 
 
-# In[2]:
+# In[13]:
 
 
 '''
@@ -92,7 +92,7 @@ def Measure_by_basis(basisList,qList):
 
 
 '''
-To decide whether the challenger passes thechallenge.
+To decide whether the challenger passes the challenge.
 
 input:
     Numbers of qubits in list.
@@ -102,27 +102,26 @@ input:
 output:
     The rate of successfully pass the challenge.
 '''
-def Match_rate_calculate(num_bits,challenge,stateList,res_measure):
+def Match_rate_calculate(num_bits,challenge,stateList,res_measure,threshold=0.99):
     False_count=0
     for a,b,c in zip(challenge,stateList,res_measure):
         if int(a)==0 :
-            if b<=1 and c[1]>=0.999 and b!=c[0]:
+            if b<=1 and c[1]>=threshold and b!=c[0]:
                 False_count+=1
-            elif b>1 and c[1]>=0.999:
+            elif b>1 and c[1]>=threshold:
                 False_count+=1
             else:
                 pass
         elif int(a)==1:
-            if b>1 and c[1]>=0.999 and b-2!=c[0]:
+            if b>1 and c[1]>=threshold and b-2!=c[0]:
                 False_count+=1
-            elif b<=1 and c[1]>=0.999:
+            elif b<=1 and c[1]>=threshold:
                 False_count+=1
             else:
                 pass
         else:
             print("ERROR in challenge value!!")
             return 0
-        
     if num_bits!=0:
         return 1.0-False_count/num_bits
     else:
@@ -131,7 +130,7 @@ def Match_rate_calculate(num_bits,challenge,stateList,res_measure):
     
 
 
-# In[3]:
+# In[14]:
 
 
 class QuantumToken(Protocol):
@@ -181,7 +180,7 @@ class QuantumToken(Protocol):
         
     def B_evaluate_reply(self,res_measure):      
         self.success_rate = Match_rate_calculate(self.num_bits,self.challenge
-            ,self.stateList,res_measure.items)
+            ,self.stateList,res_measure.items,self.threshold)
         #print("success_rate: ",self.success_rate)
         if self.validation_threshold <= self.success_rate:
             #print("Accepted!")
@@ -212,6 +211,7 @@ class QuantumToken(Protocol):
         self.depolar_rate = depolar_rate
         self.timeIND = timeIND
         self.waitTime = waitTime
+        self.threshold=threshold
         self.start()
         
     def stop(self):
@@ -278,7 +278,7 @@ class QuantumToken(Protocol):
 
 
 
-# In[4]:
+# In[15]:
 
 
 def run_QuantumToken_sim(run_times=1,fiberLenth=10**-6
@@ -302,7 +302,7 @@ def run_QuantumToken_sim(run_times=1,fiberLenth=10**-6
 
 
 
-# In[5]:
+# In[16]:
 
 
 import matplotlib.pyplot as plt
@@ -311,7 +311,7 @@ import matplotlib.pyplot as plt
 def QuantumToken_plot():
     y_axis=[]
     x_axis=[]
-    run_times=100
+    run_times=10
     num_bits=40
     min_dis=0
     max_dis=10**8
@@ -343,27 +343,12 @@ def QuantumToken_plot():
     plt.xlabel('Alice waiting time (s)') #µ
 
     plt.legend()
-    plt.savefig('QTplotA8.png')
+    plt.savefig('QTplotN1.png')
     plt.show()
 
     
 
 QuantumToken_plot()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
 
 
 
