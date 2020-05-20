@@ -20,6 +20,15 @@
 - num_bits    : Number of qubits, higher value means higher security but higher cost in terms of qubits management.
 - fiberLenth  : [km] Fiber length between two Nodes, long fiber cause more noise.
 - depolar_rate: [Hz]/[prob] Parameter of deplar noise model, this will be a probability if timeIND is true.
-- timeIND     : If ture, depolar_rate will be a probability. Otherwise in Hz.
+- timeIND     : Time independency. If ture, depolar_rate will be a probability. Otherwise in Hz.
 - threshold   : The threshold that token issuer sets. Value can only be 0 to 1. Higher value means lower tolerancy and higher security, but less verifying successful rate.
 - waitTime    : [sec] The time between node A receiving the qubits and sending challange request.
+- Cmes        : Customized challange request message, can be any classical message like 10101. Doesn't affect the protocl much.
+
+**with processor interface**
+
+- Quantum processor
+ - Quantum memory capacity
+- modulator (for H,Z...etc)
+ - noise model
+ - duration 
