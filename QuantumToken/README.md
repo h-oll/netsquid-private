@@ -28,7 +28,7 @@
 **with processor interface**
 
 - Quantum processor
-...- Quantum memory capacity
+  - Quantum memory capacity
 - modulator (for H,Z...etc)
-...- noise model
-...- duration 
+  - noise model
+  - duration 
