@@ -46,7 +46,7 @@ class QMemoryDelay(Protocol):
     
     def start(self):
         super().start()
-        self.qList = create_qubits(num_bits,system_name="Q")
+        self.qList = create_qubits(self.num_bits,system_name="Q")
         self.my_memory.put(self.qList) 
         
         
