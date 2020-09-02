@@ -12,8 +12,13 @@ E91 protocol is one of Quantum Key Distribution that generate a key pair within 
 
 ## Status
 
-E91 function normally with NS 8.0 protocol interface.
+E91 works on NS 0.10.
 Noises possible on quantum processors and fibres.
+
+02/09/2020
+- Replaced fibres with channels.
+- Integreted old sendableQProcessor class to protocol functions.
+- portName usage improved.
 
 17/02/2020
 
