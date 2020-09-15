@@ -54,7 +54,7 @@ The code is divided into blocks, each block defines functions related to their b
 ## Quantum Key Distribution
 - BB84
 - E91/Ekert/EPR
-- E91/Ekert/EPR NS8.0 version
+
 
 
 ## Quantum Money
@@ -68,6 +68,7 @@ The code is divided into blocks, each block defines functions related to their b
 - QLine
 - Quantum Memory
 - NetSquid Library
+- Universal Blind Quantum Computing 
 
 
 ## Contact
