@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
+# In[1]:
 
 
 import numpy as np
@@ -20,32 +20,48 @@ from netsquid.components.cchannel import ClassicalChannel
 from netsquid.components import QSource,Clock
 from netsquid.components.qsource import SourceStatus
 
-from netsquid.qubits.operators import Operator
+from netsquid.qubits.operators import Operator,create_rotation_op
 from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[6]:
+# In[2]:
 
 
 # General functions
 
 # Z Rotation operators 
-Iarr=((1.,0.),(0.,1.))
-Zarr=((1.,0.),(0.,-1.))
 theta = np.pi/8
+#print(theta)
 # 8 types of rotations
 # R0
-R22 = Operator("R22.5",     np.dot(np.cos(theta/2.),Iarr)    - 1.j * np.dot(np.sin(   theta/2.) , Zarr)) 
-R45 = Operator("R45",       np.dot(np.cos(2.*theta/2.),Iarr) - 1.j * np.dot(np.sin(2.*theta/2.) , Zarr)) 
-R67 = Operator("R67.5",     np.dot(np.cos(3.*theta/2.),Iarr) - 1.j * np.dot(np.sin(3.*theta/2.) , Zarr)) 
-R90 = Operator("R90",       np.dot(np.cos(4.*theta/2.),Iarr) - 1.j * np.dot(np.sin(4.*theta/2.) , Zarr)) 
-R112 = Operator("R112.5",   np.dot(np.cos(5.*theta/2.),Iarr) - 1.j * np.dot(np.sin(5.*theta/2.) , Zarr)) 
-R135 = Operator("R135",     np.dot(np.cos(6.*theta/2.),Iarr) - 1.j * np.dot(np.sin(6.*theta/2.) , Zarr)) 
-R157 = Operator("R157.5",   np.dot(np.cos(7.*theta/2.),Iarr) - 1.j * np.dot(np.sin(7.*theta/2.) , Zarr)) 
+R22=create_rotation_op(   theta/2, rotation_axis=(0, 0, 1))
+R45=create_rotation_op( 2*theta/2, rotation_axis=(0, 0, 1))
+R67=create_rotation_op( 3*theta/2, rotation_axis=(0, 0, 1))
+R90=create_rotation_op( 4*theta/2, rotation_axis=(0, 0, 1))
+R112=create_rotation_op(5*theta/2, rotation_axis=(0, 0, 1))
+R135=create_rotation_op(6*theta/2, rotation_axis=(0, 0, 1))
+R157=create_rotation_op(7*theta/2, rotation_axis=(0, 0, 1))
 
 
-# In[7]:
+INSTR_R22 = IGate('Z Rotated 22.5',operator=R22)
+INSTR_R45 = IGate('Z Rotated 45'  ,operator=R45)
+INSTR_R67 = IGate('Z Rotated 67.5',operator=R67)
+INSTR_R90 = IGate('Z Rotated 90'    ,operator=R90)
+INSTR_R112 = IGate('Z Rotated 112.5',operator=R112)
+INSTR_R135 = IGate('Z Rotated 135'  ,operator=R135)
+INSTR_R157 = IGate('Z Rotated 157.5',operator=R157)
+
+INSTR_Rv22 = IGate('Z Rotated -22.5',operator=R22.inv)
+INSTR_Rv45 = IGate('Z Rotated -45'  ,operator=R45.inv)
+INSTR_Rv67 = IGate('Z Rotated -67.5',operator=R67.inv)
+INSTR_Rv90 = IGate('Z Rotated -90'    ,operator=R90.inv)
+INSTR_Rv112 = IGate('Z Rotated -112.5',operator=R112.inv)
+INSTR_Rv135 = IGate('Z Rotated -135'  ,operator=R135.inv)
+INSTR_Rv157 = IGate('Z Rotated -157.5',operator=R157.inv)
+
+
+# In[3]:
 
 
 # Quantum programs
@@ -66,31 +82,102 @@ class PrepareEPRpairs(QuantumProgram):
         yield self.run(parallel=False)
 
 
+'''
+Measure the qubits hold by this processor by basisList.
+input:
+    basisList:list of int(0/1): indecate measurement basis
 
+'''
 class QMeasure(QuantumProgram):
-    def __init__(self,qList,basisList):
-        self.qList=qList
+    def __init__(self,basisList):
         self.basisList=basisList
         super().__init__()
 
+    def program(self):
+        print("in QMeasure")
+        for i in range(0,len(self.basisList)):
+            if self.basisList[int(i/2)] == 0:  # basisList 0:Z  , 1:X        
+                self.apply(INSTR_MEASURE, 
+                    qubit_indices=i, output_key=str(i),physical=True) 
+            else:                              
+                self.apply(INSTR_MEASURE_X, 
+                    qubit_indices=i, output_key=str(i),physical=True)
 
-    def program(self):   
-        if len(qList)!=len(basisList):
-            print("QMeasure error")
-            yield self.run(parallel=False)
-        else:
-            for i in range(0,len(self.qList)):
-                if self.basisList[int(i/2)] == 0:                  
-                    self.apply(INSTR_MEASURE, 
-                        qubit_indices=i, output_key=str(i),physical=True) 
-                else:                              
-                    self.apply(INSTR_MEASURE_X, 
-                        qubit_indices=i, output_key=str(i),physical=True)
-                    
-            yield self.run(parallel=False)
+        yield self.run(parallel=False)
 
 
-# In[8]:
+'''
+input:
+    positionInx:int: Index in Qmem to measure.
+    angleInx:int([0,7]): Index indecating measurement angle along Z-axis.
+output:
+'''
+class AngleMeasure(QuantumProgram):
+    def __init__(self,positionInx,angleInx):
+        self.positionInx=positionInx
+        self.angleInx=angleInx
+        super().__init__()
+
+    def program(self):
+        print("in AngleMeasure")
+        print("self.positionInx",self.positionInx)
+        print("self.angleInx",self.angleInx)
+        if   self.angleInx == 1:
+            self.apply(INSTR_R22, self.positionInx)
+            self.apply(INSTR_MEASURE,qubit_indices=self.positionInx, output_key="1",physical=True)
+            self.apply(INSTR_Rv22, self.positionInx)
+        elif self.angleInx == 2:
+            self.apply(INSTR_R45, self.positionInx)
+            self.apply(INSTR_MEASURE,qubit_indices=self.positionInx, output_key="1",physical=True)
+            self.apply(INSTR_Rv45, self.positionInx)
+        elif self.angleInx == 3:
+            self.apply(INSTR_R67, self.positionInx)
+            self.apply(INSTR_MEASURE,qubit_indices=self.positionInx, output_key="1",physical=True)
+            self.apply(INSTR_Rv67, self.positionInx)
+        elif self.angleInx == 4:
+            self.apply(INSTR_R90, self.positionInx)
+            self.apply(INSTR_MEASURE,qubit_indices=self.positionInx, output_key="1",physical=True)
+            self.apply(INSTR_Rv90, self.positionInx)
+        elif self.angleInx == 5:
+            self.apply(INSTR_R112, self.positionInx)
+            self.apply(INSTR_MEASURE,qubit_indices=self.positionInx, output_key="1",physical=True)
+            self.apply(INSTR_Rv112, self.positionInx)
+        elif self.angleInx == 6:
+            self.apply(INSTR_R135, self.positionInx)
+            self.apply(INSTR_MEASURE,qubit_indices=self.positionInx, output_key="1",physical=True)
+            self.apply(INSTR_Rv135, self.positionInx)
+        elif self.angleInx == 7:
+            self.apply(INSTR_R157, self.positionInx)
+            self.apply(INSTR_MEASURE,qubit_indices=self.positionInx, output_key="1",physical=True)
+            self.apply(INSTR_Rv157, self.positionInx)
+        else:  # self.angleInx == 0
+            self.apply(INSTR_MEASURE,qubit_indices=self.positionInx, output_key="1",physical=True)
+        yield self.run(parallel=False)
+        
+'''
+input:
+    Pg: A quantum program (QuantumProgram)
+output:
+    resList: A list of outputs from the given quantum program, 
+    also sorted by key.(list of int)
+'''
+
+def getPGoutput(Pg):
+    resList=[]
+    tempDict=Pg.output
+    if "last" in tempDict:
+        del tempDict["last"]
+
+    # sort base on key
+    newDict=sorted({int(k) : v for k, v in tempDict.items()}.items())
+    
+    #take value
+    for k, v in newDict:
+        resList.append(v[0])
+    return resList
+
+
+# In[4]:
 
 
 # server protocol
@@ -160,7 +247,7 @@ class ProtocolServer(NodeProtocol):
         
 
 
-# In[12]:
+# In[5]:
 
 
 # client protocol
@@ -174,7 +261,11 @@ class ProtocolClient(NodeProtocol):
         self.portNameC1=port_names[1]
         self.portNameC2=port_names[2]
         self.maxRounds=maxRounds
-        self.d=randint(0,2)
+        self.d=randint(1,2)
+        self.z2=None
+        self.theta2=None
+        self.r2=None
+        self.p2=None
     
     def run(self):
         print("client on")
@@ -188,14 +279,50 @@ class ProtocolClient(NodeProtocol):
         
         aEPR=port.rx_input().items
         print("B received qubits:",aEPR)
+        self.processor.put(aEPR)
         
-        #if self.d == 2 :
+        if self.d == 2 :
+            # measure the only qubit in Z basis
+            print("case d=2")
+            myQMeasure=QMeasure([0]) 
+            self.processor.execute_program(myQMeasure,qubit_mapping=[0])
+            self.processor.set_program_done_callback(self.myGetPGoutput,myQMeasure,once=True) #not working
+        
+            yield self.await_program(processor=self.processor)
+            #send ACK
+            self.node.ports["portCC_1"].tx_output("ACK")
             
-    
+            
+        else:
+            print("case d=1")
+            self.theta2=randint(0,7)
+            self.r2=randint(0,1)
+            # measure by theta2
+            myAngleMeasure=AngleMeasure(0,self.theta2) # first qubit
+            self.processor.execute_program(myAngleMeasure,qubit_mapping=[0])
+            self.processor.set_program_done_callback(self.myGetPGoutput,myAngleMeasure,once=True)
+            self.processor.set_program_fail_callback(self.ProgramFail,once=True)
+            yield self.await_program(processor=self.processor)
+            #send ACK
+            self.node.ports["portCC_1"].tx_output("ACK")
+            
+            
         
+    def myGetPGoutput(self,QG):
+        if self.d == 2 :
+            self.z2 = getPGoutput(QG)
+            print("self.z2=",self.z2)
+        elif self.d == 1 :
+            self.p2 = getPGoutput(QG)
+            print("self.p2=",self.p2)
+        else:
+            print("error")
+            
+    def ProgramFail(self):
+        print("programe failed!!")
 
 
-# In[15]:
+# In[6]:
 
 
 # implementation & hardware configure
@@ -223,9 +350,23 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
             PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
             PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
             PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
+            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R22, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R45, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R67, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R90, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R112, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R135, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R157, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv22, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv45, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv67, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv90, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv112, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv135, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv157, duration=1, parallel=True)])
         
-        INSTR_MEAS_22 = IMeasure('Z Rotated 22.5 measurement', observable=R22)
+        
         
         processorClient=QuantumProcessor("processorClient", num_positions=100,
             mem_noise_models=None, phys_instructions=[
@@ -235,10 +376,21 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
             PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
             PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
             PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
-
-
-        
+            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R22, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R45, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R67, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R90, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R112, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R135, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R157, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv22, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv45, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv67, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv90, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv112, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv135, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv157, duration=1, parallel=True)])
 
 
         # channels==================================================================
@@ -274,14 +426,25 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         stats = ns.sim_run()
 
 
-# In[16]:
+# In[7]:
 
 
 # test
 run_UBQC_sim()
 
 
+# In[ ]:
 
 
 
+
+'''
+R22 = Operator("R22",     np.dot(np.cos(   theta/2.),Iarr) - 1.j * np.dot(np.sin(   theta/2.) , Zarr)) 
+R45 = Operator("R45",     np.dot(np.cos(2.*theta/2.),Iarr) - 1.j * np.dot(np.sin(2.*theta/2.) , Zarr)) 
+R67 = Operator("R67",     np.dot(np.cos(3.*theta/2.),Iarr) - 1.j * np.dot(np.sin(3.*theta/2.) , Zarr)) 
+R90 = Operator("R90",     np.dot(np.cos(4.*theta/2.),Iarr) - 1.j * np.dot(np.sin(4.*theta/2.) , Zarr)) 
+R112 = Operator("R112",   np.dot(np.cos(5.*theta/2.),Iarr) - 1.j * np.dot(np.sin(5.*theta/2.) , Zarr)) 
+R135 = Operator("R135",   np.dot(np.cos(6.*theta/2.),Iarr) - 1.j * np.dot(np.sin(6.*theta/2.) , Zarr)) 
+R157 = Operator("R157",   np.dot(np.cos(7.*theta/2.),Iarr) - 1.j * np.dot(np.sin(7.*theta/2.) , Zarr)) 
+'''
 
