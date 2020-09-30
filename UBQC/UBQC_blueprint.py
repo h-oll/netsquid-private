@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[23]:
 
 
 import numpy as np
@@ -25,7 +25,7 @@ from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[2]:
+# In[24]:
 
 
 # General functions
@@ -60,8 +60,10 @@ INSTR_Rv112 = IGate('Z Rotated -112.5',operator=R112.inv)
 INSTR_Rv135 = IGate('Z Rotated -135'  ,operator=R135.inv)
 INSTR_Rv157 = IGate('Z Rotated -157.5',operator=R157.inv)
 
+INSTR_Swap = ISwap()
 
-# In[3]:
+
+# In[25]:
 
 
 # Quantum programs
@@ -80,6 +82,21 @@ class PrepareEPRpairs(QuantumProgram):
             else:                                # List B case
                 self.apply(INSTR_CNOT, [qList_idx[i-1], qList_idx[i]])
         yield self.run(parallel=False)
+
+        
+        
+#customized
+class MakeEPRpairsP02(QuantumProgram):
+    def __init__(self):
+        super().__init__()
+    def program(self):
+        # create multiEPR
+        self.apply(INSTR_H, 0)
+        self.apply(INSTR_CNOT, [0, 2])
+        yield self.run(parallel=False)
+        
+        
+        
 
 
 '''
@@ -177,12 +194,31 @@ def getPGoutput(Pg):
     return resList
 
 
-# In[4]:
+'''
+Swap the qubits hold by this processor by position.
+input:
+    position:list of int: indecate qubits to swap 
+
+'''
+
+class QSwap(QuantumProgram):
+    def __init__(self,IST,position):
+        self.IST=IST
+        self.position=position
+        super().__init__()
+
+    def program(self):
+        print("in QSwap ")
+        self.apply(self.IST, qubit_indices=self.position, physical=True)
+        yield self.run(parallel=False)    
+
+
+# In[65]:
 
 
 # server protocol
 class ProtocolServer(NodeProtocol):
-    
+
     def __init__(self,node,processor,port_names=["portQS_1","portCS_1","portCS_2"],realRound=5):
         super().__init__()
         self.node=node
@@ -190,38 +226,54 @@ class ProtocolServer(NodeProtocol):
         self.portNameQ1=port_names[0]
         self.portNameC1=port_names[1]
         self.portNameC2=port_names[2]
-        self.sourceQList = []
-        self.port_output = []
-        self.realRound = realRound
-            
-    def S_genQubits(self,num):
+        self.sourceQList=[]
+        self.port_output=[]
+        self.realRound=realRound
+        
+        
+        self.S_Source = QSource("S_source") 
+        self.S_Source.ports["qout0"].bind_output_handler(self.store_output_from_port)
+        self.S_Source.status = SourceStatus.EXTERNAL
+        
+        
+        #quantum_memory=self.processor, positions=[0,1])
+        
+
+        
+        
+        
+    def S_genQubits(self,num,freq=1e9):
         #generat qubits from source
-        A_Source = QSource("S_source") 
-        A_Source.ports["qout0"].bind_output_handler(self.store_output_from_port)
-        A_Source.status = SourceStatus.EXTERNAL
         
         #set clock
-        clock = Clock("clock", frequency=1e9, max_ticks=num)
-        clock.ports["cout"].connect(A_Source.ports["trigger"])
+        clock = Clock("clock", frequency=freq, max_ticks=num)
+        try:
+            clock.ports["cout"].connect(self.S_Source.ports["trigger"])
+        except:
+            print("alread connected")
+        
         clock.start()
         
         
     def store_output_from_port(self,message):
         self.port_output.append(message.items[0])
-        if len(self.port_output)==2:
+        if len(self.port_output)==4:
             print("store_output_from_port:",self.port_output)
             self.processor.put(qubits=self.port_output)
             
             # do H CNOT operation
             # PrepareEPRpairs
-            prepareEPRpairs=PrepareEPRpairs(1)
+            prepareEPRpairs=PrepareEPRpairs(2)
+            
+            #prepareEPRpairs=MakeEPRpairsP02()
+            
             self.processor.execute_program(
-                prepareEPRpairs,qubit_mapping=[i for  i in range(0, 2)])
+                prepareEPRpairs,qubit_mapping=[i for  i in range(0, 4)])
     
     
     def S_sendEPR(self):
         #print("S_sendEPR")
-        payload=self.processor.pop(1)
+        payload=self.processor.pop([1,3]) # send the third one
         self.node.ports[self.portNameQ1].tx_output(payload)        
         
     
@@ -238,20 +290,66 @@ class ProtocolServer(NodeProtocol):
         # send half of an EPRpair to client
         
         # gen 2 qubits
-        self.S_genQubits(2)
+        self.S_genQubits(4)
+        
+        
         
         yield self.await_program(processor=self.processor)
+        print("S1 num_used_positions=",self.processor.num_used_positions)
         self.S_sendEPR()
         
         
+        port = self.node.ports["portCS_1"]
+        #receive qubits from client
+        yield self.await_port_input(port)
+        print("S2 num_used_positions=",self.processor.num_used_positions)
+        tmp=port.rx_input().items
+        print(tmp)
+        if tmp[0]=="ACK":
+            print("ACK received start swaping")
+        else:
+            print(tmp[0])
+            print("ACK NOT received ERROR!!!")
+        
+        
+        #Gen another qubit
+        #self.S_genQubits(1)
+        
+        
+        #Swap
+        myQSwap=QSwap(INSTR_Swap,position=[0,2])
+        self.processor.execute_program(myQSwap,qubit_mapping=[0,1,2])
+        yield self.await_program(processor=self.processor)
+        print("myQSwap finished")
+        
+        # send ACK
+        
+        self.node.ports["portCS_2"].tx_output("ACK2")
+        
+        
+        
         
 
 
-# In[5]:
+# In[66]:
 
 
 # client protocol
 class ProtocolClient(NodeProtocol):
+    
+    def myGetPGoutput(self,QG):
+        if self.d == 2 :
+            self.z2 = getPGoutput(QG)
+            print("self.z2=",self.z2)
+        elif self.d == 1 :
+            self.p2 = getPGoutput(QG)
+            print("self.p2=",self.p2)
+        else:
+            print("error")
+            
+    def ProgramFail(self):
+        print("programe failed!!")
+    
     
     def __init__(self,node,processor,port_names=["portQC_1","portCC_1","portCC_2"],maxRounds=10):
         super().__init__()
@@ -272,9 +370,8 @@ class ProtocolClient(NodeProtocol):
         testsms=2
         self.node.ports[self.portNameC1].tx_output(testsms)
         
-        
-        port = self.node.ports["portQC_1"]
         #receive qubits from client
+        port = self.node.ports["portQC_1"]
         yield self.await_port_input(port)
         
         aEPR=port.rx_input().items
@@ -287,11 +384,11 @@ class ProtocolClient(NodeProtocol):
             myQMeasure=QMeasure([0]) 
             self.processor.execute_program(myQMeasure,qubit_mapping=[0])
             self.processor.set_program_done_callback(self.myGetPGoutput,myQMeasure,once=True) #not working
-        
+            '''
             yield self.await_program(processor=self.processor)
             #send ACK
             self.node.ports["portCC_1"].tx_output("ACK")
-            
+            '''
             
         else:
             print("case d=1")
@@ -302,27 +399,26 @@ class ProtocolClient(NodeProtocol):
             self.processor.execute_program(myAngleMeasure,qubit_mapping=[0])
             self.processor.set_program_done_callback(self.myGetPGoutput,myAngleMeasure,once=True)
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
-            yield self.await_program(processor=self.processor)
-            #send ACK
-            self.node.ports["portCC_1"].tx_output("ACK")
             
             
+        yield self.await_program(processor=self.processor)
+        #send ACK
+        print("C sneding  ACK")
+        self.node.ports["portCC_1"].tx_output("ACK")
+
+        print("C waiting for ACK2")
+        port = self.node.ports["portCC_2"]
+        yield self.await_port_input(port)   
+        tmp = port.rx_input().items
+        print("C received final:",tmp)
         
-    def myGetPGoutput(self,QG):
-        if self.d == 2 :
-            self.z2 = getPGoutput(QG)
-            print("self.z2=",self.z2)
-        elif self.d == 1 :
-            self.p2 = getPGoutput(QG)
-            print("self.p2=",self.p2)
-        else:
-            print("error")
-            
-    def ProgramFail(self):
-        print("programe failed!!")
+        
+        
+        
+        
 
 
-# In[6]:
+# In[67]:
 
 
 # implementation & hardware configure
@@ -342,7 +438,7 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         noise_model=None #try
         
         
-        processorServer=QuantumProcessor("processorServer", num_positions=100,
+        processorServer=QuantumProcessor("processorServer", num_positions=10,
             mem_noise_models=None, phys_instructions=[
             PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
             PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
@@ -364,11 +460,12 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
             PhysicalInstruction(INSTR_Rv90, duration=1, parallel=True),
             PhysicalInstruction(INSTR_Rv112, duration=1, parallel=True),
             PhysicalInstruction(INSTR_Rv135, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_Rv157, duration=1, parallel=True)])
+            PhysicalInstruction(INSTR_Rv157, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Swap, duration=1, parallel=True)])
         
         
         
-        processorClient=QuantumProcessor("processorClient", num_positions=100,
+        processorClient=QuantumProcessor("processorClient", num_positions=10,
             mem_noise_models=None, phys_instructions=[
             PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
             PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
@@ -426,7 +523,7 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         stats = ns.sim_run()
 
 
-# In[7]:
+# In[68]:
 
 
 # test
@@ -437,14 +534,4 @@ run_UBQC_sim()
 
 
 
-
-'''
-R22 = Operator("R22",     np.dot(np.cos(   theta/2.),Iarr) - 1.j * np.dot(np.sin(   theta/2.) , Zarr)) 
-R45 = Operator("R45",     np.dot(np.cos(2.*theta/2.),Iarr) - 1.j * np.dot(np.sin(2.*theta/2.) , Zarr)) 
-R67 = Operator("R67",     np.dot(np.cos(3.*theta/2.),Iarr) - 1.j * np.dot(np.sin(3.*theta/2.) , Zarr)) 
-R90 = Operator("R90",     np.dot(np.cos(4.*theta/2.),Iarr) - 1.j * np.dot(np.sin(4.*theta/2.) , Zarr)) 
-R112 = Operator("R112",   np.dot(np.cos(5.*theta/2.),Iarr) - 1.j * np.dot(np.sin(5.*theta/2.) , Zarr)) 
-R135 = Operator("R135",   np.dot(np.cos(6.*theta/2.),Iarr) - 1.j * np.dot(np.sin(6.*theta/2.) , Zarr)) 
-R157 = Operator("R157",   np.dot(np.cos(7.*theta/2.),Iarr) - 1.j * np.dot(np.sin(7.*theta/2.) , Zarr)) 
-'''
 
