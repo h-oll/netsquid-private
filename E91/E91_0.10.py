@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[34]:
 
 
 import numpy as np
@@ -9,9 +9,8 @@ import netsquid as ns
 from netsquid.nodes.node import Node
 from netsquid.protocols import NodeProtocol
 from netsquid.qubits.operators import X,H,Z
-from netsquid.nodes.connections import DirectConnection
 from netsquid.components  import ClassicalFibre,QuantumFibre
-from netsquid.components.models import  FibreDelayModel
+
 from netsquid.qubits.qformalism import *
 from netsquid.components.qprocessor import *
 from netsquid.components.instructions import *
@@ -23,8 +22,10 @@ from netsquid.components.cchannel import ClassicalChannel
 from netsquid.components import QSource,Clock
 from netsquid.components.qsource import SourceStatus
 
+from netsquid.components.models.qerrormodels import FibreLossModel
 
-# In[2]:
+
+# In[35]:
 
 
 # General function
@@ -120,13 +121,9 @@ def lenfilter(var):
     else: 
         return False
   
-  
 
 
-
-
-
-# In[3]:
+# In[36]:
 
 
 # class of quantum program
@@ -139,6 +136,7 @@ class QG_A_qPrepare(QuantumProgram):
     def program(self):
         qList_idx=self.get_qubit_indices(2*self.num_bits)
         # create multiEPR
+        #print("A QG_A_qPrepare")
         for i in range(2*self.num_bits):
             #self.apply(INSTR_INIT, qList_idx[i])
             if i%2==0:                           # List A case
@@ -185,45 +183,11 @@ class QG_B_measure(QuantumProgram):
         yield self.run(parallel=False)
 
 
-# In[4]:
+# In[61]:
 
 
 class AliceProtocol(NodeProtocol):
     
-    def storeSourceOutput(self,qubit):
-        self.sourceQList.append(qubit.items[0])
-        #print("store:",qubit.items[0])
-        if len(self.sourceQList)==2*self.num_bits:
-            #print("putting qList: ",self.sourceQList," to processor")
-            self.processor.put(qubits=self.sourceQList)
-            
-            self.A_sendEPR()
-
-
-    def A_genQubits(self):
-        #generat qubits from source
-        A_Source = QSource("Alice_source"
-            ,status=SourceStatus.EXTERNAL) # enable frequency
-        A_Source.ports["qout0"].bind_output_handler(
-            self.storeSourceOutput)
-        
-        #set clock
-        clock = Clock("clock", frequency=1e9, max_ticks=2*self.num_bits)
-        clock.ports["cout"].connect(A_Source.ports["trigger"])
-        clock.start()
-        
-            
-    def A_sendEPR(self):
-        inx=list(range(1,2*self.num_bits+1,2))
-        payload=self.processor.pop(inx)
-        self.node.ports[self.portNameQ1].tx_output(payload)
-        
-
-    def A_getPGoutput(self):
-        self.loc_mesRes=getPGoutput(self.myQG_A_measure)
-        
-        
-        
     def __init__(self,node,processor,num_bits,
                 port_names=["portQA_1","portCA_1","portCA_2"]):
         super().__init__()
@@ -239,26 +203,25 @@ class AliceProtocol(NodeProtocol):
         self.key=None
         self.sourceQList=[]
         
-        
+        #generat qubits from source
+        self.A_Source = QSource("Alice_source"
+            ,status=SourceStatus.EXTERNAL) # enable frequency
+        self.A_Source.ports["qout0"].bind_output_handler(self.storeSourceOutput)
         
     # =======================================A run ============================
     def run(self):
 
         
         # A generat qubits
-        self.A_genQubits()
+        self.A_genQubits(self.num_bits,1e9)
         
-        
-        # await_program(type cls, processor, await_done=True, await_fail=False)
-        #yield self.await_program(processor=self.processor)
-        
-        # after filled up
-            
         # wait
-        # apply H detector
-        PG_A=QG_A_qPrepare(num_bits=self.num_bits)
-        self.processor.execute_program(
-            PG_A,qubit_mapping=[i for  i in range(0, 2*self.num_bits)])
+        yield self.await_program(processor=self.processor)
+        
+        
+        #yield self.await_program(processor=self.processor)
+        # send qubits
+        self.A_sendEPR()
         
         # receive B basis
         port=self.node.ports[self.portNameC1]
@@ -274,8 +237,7 @@ class AliceProtocol(NodeProtocol):
         
         
         # get A meas
-        self.processor.set_program_done_callback(
-            self.A_getPGoutput,once=True)
+        self.processor.set_program_done_callback(self.A_getPGoutput,once=True)
         
         # send A basis to B
         self.node.ports[self.portNameC2].tx_output(self.basisList)
@@ -290,45 +252,48 @@ class AliceProtocol(NodeProtocol):
         self.key=''.join(map(str, self.loc_mesRes))
         #print("A key:",self.key)
 
+    def storeSourceOutput(self,qubit):
+        self.sourceQList.append(qubit.items[0])
+        if len(self.sourceQList)==2*self.num_bits:
+            self.processor.put(qubits=self.sourceQList)
+            
+            #self.A_sendEPR()
+            # apply H detector
+            PG_qPrepare=QG_A_qPrepare(num_bits=self.num_bits)
+            self.processor.execute_program(
+                PG_qPrepare,qubit_mapping=[i for  i in range(0, 2*self.num_bits)])
+
+
+    def A_genQubits(self,num,freq=1e9):
+        
+        
+        #set clock
+        clock = Clock("clock", frequency=freq, max_ticks=2*num)
+        try:
+            clock.ports["cout"].connect(self.A_Source.ports["trigger"])
+        except:
+            pass
+            #print("alread connected") 
+            
+        clock.start()
+        
+            
+    def A_sendEPR(self):
+        #print("A_sendEPR")
+        inx=list(range(1,2*self.num_bits+1,2))
+        payload=self.processor.pop(inx)
+        self.node.ports[self.portNameQ1].tx_output(payload)
         
 
+    def A_getPGoutput(self):
+        self.loc_mesRes=getPGoutput(self.myQG_A_measure)
 
-# In[5]:
+
+# In[62]:
 
 
 class BobProtocol(NodeProtocol):
     
-    def B_checkLoss(self,qList):
-        num_inx=int(qList[0].name[14:-len('-')-1]) # get index from bits
-
-        self.lossList=[]
-        for idx,qubit in enumerate(qList):
-            loc_num=int(qubit.name[14:-len('-')-1]) # received qubit
-            found_flag=True
-            while(found_flag and len(self.lossList)<self.num_bits):
-                if loc_num==num_inx:
-                    found_flag=False
-                else:
-                    self.lossList.append(idx)
-                num_inx+=2
-                
-        # init B's basisList
-        self.basisList=Random_basis_gen(len(qList))
-        
-        # check for first N qubit loss
-        if self.num_bits-len(self.lossList)>len(qList):
-            # first qubit loss detected
-            # value of self.firstLoss indecats how many qubits are lost
-            self.firstLoss=self.num_bits-len(qList)-len(self.lossList)  
-        else:
-            self.firstLoss=0
-
-    
-    def B_getPGoutput(self):
-        self.loc_measRes=getPGoutput(self.myQG_B_measure)
-
-
-
     def __init__(self,node,processor,num_bits,
                 port_names=["portQB_1","portCB_1","portCB_2"]):
         super().__init__()
@@ -405,9 +370,39 @@ class BobProtocol(NodeProtocol):
         self.key=''.join(map(str, self.loc_measRes))
         #print("B key:",self.key)
         
+        
+        
+    def B_checkLoss(self,qList):
+        num_inx=int(qList[0].name[14:-len('-')-1]) # get index from bits
+
+        self.lossList=[]
+        for idx,qubit in enumerate(qList):
+            loc_num=int(qubit.name[14:-len('-')-1]) # received qubit
+            found_flag=True
+            while(found_flag and len(self.lossList)<self.num_bits):
+                if loc_num==num_inx:
+                    found_flag=False
+                else:
+                    self.lossList.append(idx)
+                num_inx+=2
+                
+        # init B's basisList
+        self.basisList=Random_basis_gen(len(qList))
+        
+        # check for first N qubit loss
+        if self.num_bits-len(self.lossList)>len(qList):
+            # first qubit loss detected
+            # value of self.firstLoss indecats how many qubits are lost
+            self.firstLoss=self.num_bits-len(qList)-len(self.lossList)  
+        else:
+            self.firstLoss=0
+
+    
+    def B_getPGoutput(self):
+        self.loc_measRes=getPGoutput(self.myQG_B_measure)
 
 
-# In[6]:
+# In[65]:
 
 
 # implementation & hardware configure
@@ -427,8 +422,8 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         nodeB = Node("Bob"  , port_names=["portQB_1","portCB_1","portCB_2"])
 
         # processors===============================================================
-        noise_model=None
-        Alice_processor=QuantumProcessor("processor_A", num_positions=100,
+        #noise_model=None
+        Alice_processor=QuantumProcessor("processor_A", num_positions=3*10**4,
             mem_noise_models=None, phys_instructions=[
             PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
             PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
@@ -439,7 +434,7 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
             PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
 
 
-        Bob_processor=QuantumProcessor("processor_B", num_positions=100,
+        Bob_processor=QuantumProcessor("processor_B", num_positions=3*10**4,
             mem_noise_models=None, phys_instructions=[
             PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
             PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
@@ -452,10 +447,9 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
 
         # channels==================================================================
         
-        #FibreDelayModel()
-    
-        MyQChannel=QuantumChannel("QChannel_A->B",delay=0
-            ,length=fibre_len,models=noise_model)
+        MyQChannel=QuantumChannel("QChannel_A->B",delay=10
+            ,length=fibre_len
+            ,models={"myFibreLossModel": FibreLossModel(p_loss_init=0.9, p_loss_length=0.25, rng=None)})
         
         
         nodeA.connect_to(nodeB, MyQChannel,
@@ -488,17 +482,43 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
     return MyE91List_A, MyE91List_B
 
 
-# In[ ]:
+
+
+
+
+
+# In[66]:
 
 
 # key pairs generation
 
-myErrorModel=DepolarNoiseModel(depolar_rate=1000)
-toWrite=run_E91_sim(runtimes=300,num_bits=13,fibre_len=10**-9,noise_model=myErrorModel)
+#myErrorModel=DepolarNoiseModel(depolar_rate=50000)
+myErrorModel=T1T2NoiseModel(T1=1100, T2=1000)
+toWrite=run_E91_sim(runtimes=1,num_bits=10**4,fibre_len=10000,noise_model=myErrorModel) #10**-9
+#print(toWrite)
+
+listToPrint=''
+listToPrint=str(toWrite)
+print(listToPrint)
+outF = open("keyOutput6.txt", "w")
+outF.writelines(listToPrint)
+outF.close()
 
 
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+'''
 filtered_A = filter(lenfilter, toWrite[0]) 
 filtered_B = filter(lenfilter, toWrite[1])    
+
 
 listToPrint=''
 for i,j in zip(filtered_A,filtered_B):
@@ -508,11 +528,12 @@ for i,j in zip(filtered_A,filtered_B):
     listToPrint+=str(j)
     listToPrint+=']'
     
-#print(listToPrint)
+print(listToPrint)
 
 outF = open("keyOutput.txt", "w")
 outF.writelines(listToPrint[1:-1])
 outF.close()
+'''
 
 
 # In[18]:
