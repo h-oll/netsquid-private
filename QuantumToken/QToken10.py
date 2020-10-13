@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[2]:
 
 
 import numpy as np
@@ -26,15 +26,7 @@ from netsquid.components.qsource import SourceStatus
 from netsquid.components.models.qerrormodels import FibreLossModel
 
 
-# In[2]:
-
-
-# General function
-
-
-
-
-# In[25]:
+# In[42]:
 
 
 
@@ -60,8 +52,49 @@ def getPGoutput(Pg):
         resList.append(v[0])
     return resList
 
-
-
+'''
+input:
+    basisInxList: Oroginal sets of qubits:(list of N)
+        0:(0,+)  1:(0,-)  2:(1,+)  3:(1,-)
+        4:(+,0)  5:(+,1)  6:(-,0)  7:(-,1)
+    randMeas:(int 0/1)
+        0: standard basis   1: H basis
+    locRes:(list of 2*N)
+        received measurement to check
+output:
+    res: 
+        the persentage of passed qubits among all qubits.
+'''
+def TokenCheck(basisInxList,randMeas,locRes):
+    failCount=0
+    if randMeas==0:
+        for i in range(len(basisInxList)):
+            if basisInxList[i]<=1 and locRes[2*i]==0:
+                pass
+            elif basisInxList[i]<=3 and locRes[2*i]==1:
+                pass
+            elif basisInxList[i]%2==0 and locRes[2*i+1]==0:
+                pass
+            elif basisInxList[i]%2==1 and locRes[2*i+1]==1:
+                pass
+            else:
+                #print("false case1:",i)
+                failCount+=1
+    else: # randMeas==1:
+        for i in range(len(basisInxList)):
+            if basisInxList[i]>=6 and locRes[2*i]==1:
+                pass
+            elif basisInxList[i]>=4 and locRes[2*i]==0:
+                pass
+            elif basisInxList[i]%2==0 and locRes[2*i+1]==0:
+                pass
+            elif basisInxList[i]%2==1 and locRes[2*i+1]==1:
+                pass
+            else:
+                #print("false case2:",i)
+                failCount+=1
+    
+    return (len(basisInxList)-failCount)/len(basisInxList)
 
 
 # class of quantum program
@@ -128,7 +161,7 @@ class QG_A_measure(QuantumProgram):
         
 
 
-# In[26]:
+# In[47]:
 
 
 class AliceProtocol(NodeProtocol):
@@ -144,7 +177,8 @@ class AliceProtocol(NodeProtocol):
         self.portNameC2=port_names[2]
         self.waitTime=waitTime
         self.tokenQlist = None
-        
+        self.loc_mesRes = None
+        self.myQG_A_measure = None
         
     # =======================================A run ============================
     def run(self):
@@ -174,13 +208,24 @@ class AliceProtocol(NodeProtocol):
         
         #print("mem 1 used?  ",self.processor.get_position_used(2*self.num_bits))
         
-        myQG_A_measure=QG_A_measure(basisList=basisList,num_bits=2*self.num_bits)
+        self.myQG_A_measure=QG_A_measure(basisList=basisList,num_bits=2*self.num_bits)
         self.processor.execute_program(
-            myQG_A_measure,qubit_mapping=[i for  i in range(0, 2*self.num_bits)])
+            self.myQG_A_measure,qubit_mapping=[i for  i in range(0, 2*self.num_bits)])
         
         
-
-
+        self.processor.set_program_done_callback(self.A_getPGoutput,once=True)
+        yield self.await_program(processor=self.processor)
+        print("self.loc_mesRes",self.loc_mesRes)
+        
+        self.node.ports[self.portNameC1].tx_output(self.loc_mesRes)
+        
+        
+        port=self.node.ports[self.portNameC2]
+        yield self.await_port_input(port)
+        Res=port.rx_input().items[0]
+        print("A received result:",Res)
+        
+        
 
     def A_getPGoutput(self):
         self.loc_mesRes=getPGoutput(self.myQG_A_measure)
@@ -204,17 +249,16 @@ class AliceProtocol(NodeProtocol):
         message = "10101"    #use 10101 as request of challenge
         self.node.ports["portCA_1"].tx_output(message)
         
-        
-        
+            
         
 
 
-# In[27]:
+# In[53]:
 
 
 class BobProtocol(NodeProtocol):
     
-    def __init__(self,node,processor,num_bits,
+    def __init__(self,node,processor,num_bits,threshold,
                 port_names=["portQB_1","portCB_1","portCB_2"]):
         super().__init__()
         self.num_bits=num_bits
@@ -227,11 +271,17 @@ class BobProtocol(NodeProtocol):
         self.sourceQList=[]
         self.basisInxList=[randint(0,7) for i in range(self.num_bits)]
         self.randMeas=randint(0,1) #0:Z basis(standard)   1:X basis(H)
+        self.locRes = None
+        self.threshold = threshold
+        self.successfulRate=None
+        
         
         #generat qubits from source
         self.B_Source = QSource("Bank_source"
             ,status=SourceStatus.EXTERNAL) # enable frequency
         self.B_Source.ports["qout0"].bind_output_handler(self.storeSourceOutput)
+        
+        print("basisInxList:",self.basisInxList)
 
     # =======================================B run ============================
     def run(self):
@@ -257,11 +307,23 @@ class BobProtocol(NodeProtocol):
             print(reqMes)
             
         print("waiting for result")
-        port = self.node.ports[self.portNameC2]
+        port = self.node.ports[self.portNameC1]
         yield self.await_port_input(port)
-             
+        self.locRes = port.rx_input().items
+        print("locRes:",self.locRes)
         
+        self.successfulRate=TokenCheck(self.basisInxList,self.randMeas,self.locRes)
+        print("B successfulRate:",self.successfulRate)
         
+        # send result to A
+        if self.successfulRate > self.threshold :
+            # pass
+            self.node.ports[self.portNameC2].tx_output(True)
+        else:
+            # you shall not pass!
+            self.node.ports[self.portNameC2].tx_output(False)
+            
+            
 
     def B_genQubits(self,num,freq=1e9):
         
@@ -324,11 +386,10 @@ class BobProtocol(NodeProtocol):
             self.firstLoss=0
 
     
-    def B_getPGoutput(self):
-        self.loc_measRes=getPGoutput(self.myQG_B_measure)
+   
 
 
-# In[28]:
+# In[54]:
 
 
 # implementation & hardware configure
@@ -396,7 +457,7 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         
 
         Alice_protocol = AliceProtocol(nodeA,Alice_processor,num_bits,waitTime=1)
-        Bob_protocol = BobProtocol(nodeB,Bob_processor,num_bits)
+        Bob_protocol = BobProtocol(nodeB,Bob_processor,num_bits,0.95)
         Bob_protocol.start()
         Alice_protocol.start()
         #ns.logger.setLevel(1)
@@ -411,11 +472,11 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
 
 
 
-# In[29]:
+# In[59]:
 
 
 #test
-myErrorModel=None
+myErrorModel=T1T2NoiseModel(T1=110, T2=109)
 run_E91_sim(1,10,1,noise_model=myErrorModel,loss_init=0,loss_len=0.1) 
 
 
