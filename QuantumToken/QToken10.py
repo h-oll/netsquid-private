@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import numpy as np
@@ -9,24 +9,22 @@ import netsquid as ns
 from netsquid.nodes.node import Node
 from netsquid.protocols import NodeProtocol
 from netsquid.qubits.operators import X,H,Z
-from netsquid.components  import ClassicalFibre,QuantumFibre
-from netsquid.pydynaa import Entity,EventHandler,EventType
-
 from netsquid.qubits.qformalism import *
+from netsquid.pydynaa import Entity,EventHandler,EventType
 from netsquid.components.qprocessor import *
 from netsquid.components.instructions import *
 from netsquid.components.qprogram import *
 from netsquid.components.models.qerrormodels import *
-from random import randint
 from netsquid.components.qchannel import QuantumChannel
 from netsquid.components.cchannel import ClassicalChannel
 from netsquid.components import QSource,Clock
 from netsquid.components.qsource import SourceStatus
-
 from netsquid.components.models.qerrormodels import FibreLossModel
 
+from random import randint
 
-# In[42]:
+
+# In[2]:
 
 
 
@@ -161,7 +159,7 @@ class QG_A_measure(QuantumProgram):
         
 
 
-# In[47]:
+# In[3]:
 
 
 class AliceProtocol(NodeProtocol):
@@ -200,10 +198,10 @@ class AliceProtocol(NodeProtocol):
         
         #print("A received:",port.rx_input().items)
         basis=port.rx_input().items[0]
-        print("basis:",basis)
+        #print("basis:",basis)
         
         basisList=[basis for i in range(2*self.num_bits)]
-        print("basisList:",basisList)
+        #print("basisList:",basisList)
         
         
         #print("mem 1 used?  ",self.processor.get_position_used(2*self.num_bits))
@@ -215,7 +213,7 @@ class AliceProtocol(NodeProtocol):
         
         self.processor.set_program_done_callback(self.A_getPGoutput,once=True)
         yield self.await_program(processor=self.processor)
-        print("self.loc_mesRes",self.loc_mesRes)
+        #print("self.loc_mesRes",self.loc_mesRes)
         
         self.node.ports[self.portNameC1].tx_output(self.loc_mesRes)
         
@@ -223,7 +221,7 @@ class AliceProtocol(NodeProtocol):
         port=self.node.ports[self.portNameC2]
         yield self.await_port_input(port)
         Res=port.rx_input().items[0]
-        print("A received result:",Res)
+        #print("A received result:",Res)
         
         
 
@@ -253,12 +251,12 @@ class AliceProtocol(NodeProtocol):
         
 
 
-# In[53]:
+# In[4]:
 
 
 class BobProtocol(NodeProtocol):
     
-    def __init__(self,node,processor,num_bits,threshold,
+    def __init__(self,node,processor,num_bits,threshold=0.854,
                 port_names=["portQB_1","portCB_1","portCB_2"]):
         super().__init__()
         self.num_bits=num_bits
@@ -281,7 +279,7 @@ class BobProtocol(NodeProtocol):
             ,status=SourceStatus.EXTERNAL) # enable frequency
         self.B_Source.ports["qout0"].bind_output_handler(self.storeSourceOutput)
         
-        print("basisInxList:",self.basisInxList)
+        #print("basisInxList:",self.basisInxList)
 
     # =======================================B run ============================
     def run(self):
@@ -300,20 +298,20 @@ class BobProtocol(NodeProtocol):
         if  reqMes == '10101':
     
             # send payload
-            print("send rand measurement!")
+            #print("send rand measurement!")
             self.node.ports[self.portNameC2].tx_output(self.randMeas)
         else:
             print("req error!")
             print(reqMes)
             
-        print("waiting for result")
+        #print("waiting for result")
         port = self.node.ports[self.portNameC1]
         yield self.await_port_input(port)
         self.locRes = port.rx_input().items
-        print("locRes:",self.locRes)
+        #print("locRes:",self.locRes)
         
         self.successfulRate=TokenCheck(self.basisInxList,self.randMeas,self.locRes)
-        print("B successfulRate:",self.successfulRate)
+        #print("B successfulRate:",self.successfulRate)
         
         # send result to A
         if self.successfulRate > self.threshold :
@@ -358,48 +356,20 @@ class BobProtocol(NodeProtocol):
         inx=list(range(2*self.num_bits))
         payload=self.processor.pop(inx)
         self.node.ports[self.portNameQ1].tx_output(payload)
-        
-            
-    def B_checkLoss(self,qList):
-        num_inx=int(qList[0].name[14:-len('-')-1]) # get index from bits
-
-        self.lossList=[]
-        for idx,qubit in enumerate(qList):
-            loc_num=int(qubit.name[14:-len('-')-1]) # received qubit
-            found_flag=True
-            while(found_flag and len(self.lossList)<self.num_bits):
-                if loc_num==num_inx:
-                    found_flag=False
-                else:
-                    self.lossList.append(idx)
-                num_inx+=2
-                
-        # init B's basisList
-        self.basisList=Random_basis_gen(len(qList))
-        
-        # check for first N qubit loss
-        if self.num_bits-len(self.lossList)>len(qList):
-            # first qubit loss detected
-            # value of self.firstLoss indecats how many qubits are lost
-            self.firstLoss=self.num_bits-len(qList)-len(self.lossList)  
-        else:
-            self.firstLoss=0
-
-    
-   
+      
 
 
-# In[54]:
+# In[5]:
 
 
 # implementation & hardware configure
-def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
-               loss_init=0,loss_len=0):
+def run_QToken_sim(runTimes=1,num_bits=100,fibre_len=0,waitTime=1,
+        processNoiseModel=None,memNoiseModel=None,loss_init=0,loss_len=0,threshold=0.854,
+        fibreLoss_init=0.2,fibreLoss_len=0.25,QChDelay=1,CChDelay=0):
     
-    MyE91List_A=[]  # local protocol list A
-    MyE91List_B=[]  # local protocol list B
+    resList=[]
     
-    for i in range(runtimes): 
+    for i in range(runTimes): 
         
         ns.sim_reset()
 
@@ -411,30 +381,30 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         # processors===============================================================
         #noise_model=None
         Alice_processor=QuantumProcessor("processor_A", num_positions=3*10**3,
-            mem_noise_models=noise_model, phys_instructions=[
-            PhysicalInstruction(INSTR_X, duration=20, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_Z, duration=20, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_H, duration=20, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_CNOT,duration=20,q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_MEASURE, duration=40, parallel=True),
-            PhysicalInstruction(INSTR_MEASURE_X, duration=40, parallel=True)])
+            mem_noise_models=memNoiseModel, phys_instructions=[
+            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=processNoiseModel),
+            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processNoiseModel),
+            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processNoiseModel),
+            PhysicalInstruction(INSTR_CNOT,duration=10,q_noise_model=processNoiseModel),
+            PhysicalInstruction(INSTR_MEASURE, duration=10,q_noise_model=processNoiseModel, parallel=True),
+            PhysicalInstruction(INSTR_MEASURE_X, duration=10,q_noise_model=processNoiseModel, parallel=True)])
 
 
         Bob_processor=QuantumProcessor("processor_B", num_positions=3*10**3,
-            mem_noise_models=noise_model, phys_instructions=[
-            PhysicalInstruction(INSTR_X, duration=20, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_Z, duration=20, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_H, duration=20, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_CNOT,duration=20,q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_MEASURE, duration=40, parallel=True),
-            PhysicalInstruction(INSTR_MEASURE_X, duration=40, parallel=True)])
+            mem_noise_models=memNoiseModel, phys_instructions=[
+            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=processNoiseModel),
+            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processNoiseModel),
+            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processNoiseModel),
+            PhysicalInstruction(INSTR_CNOT,duration=10,q_noise_model=processNoiseModel),
+            PhysicalInstruction(INSTR_MEASURE, duration=10,q_noise_model=processNoiseModel, parallel=True),
+            PhysicalInstruction(INSTR_MEASURE_X, duration=10,q_noise_model=processNoiseModel, parallel=True)])
 
 
         # channels==================================================================
         
-        MyQChannel=QuantumChannel("QChannel_B->A",delay=10
-            ,length=fibre_len
-            ,models={"myFibreLossModel": FibreLossModel(p_loss_init=0, p_loss_length=0.25, rng=None)})
+        MyQChannel=QuantumChannel("QChannel_B->A",delay=QChDelay,length=fibre_len
+            ,models={"myFibreLossModel": FibreLossModel(p_loss_init=fibreLoss_init
+            ,p_loss_length=fibreLoss_len, rng=None)})
         
         
         nodeB.connect_to(nodeA, MyQChannel,
@@ -442,9 +412,9 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
             remote_port_name=nodeA.ports["portQA_1"].name)
         
         
-        MyCChannel= ClassicalChannel("CChannel_A->B",delay=0
+        MyCChannel= ClassicalChannel("CChannel_A->B",delay=CChDelay
             ,length=fibre_len)
-        MyCChannel2 = ClassicalChannel("CChannel_B->A",delay=0
+        MyCChannel2 = ClassicalChannel("CChannel_B->A",delay=CChDelay
             ,length=fibre_len)
         
         
@@ -453,101 +423,73 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         nodeB.connect_to(nodeA, MyCChannel2,
                             local_port_name="portCB_2", remote_port_name="portCA_2")
         
-
         
 
-        Alice_protocol = AliceProtocol(nodeA,Alice_processor,num_bits,waitTime=1)
-        Bob_protocol = BobProtocol(nodeB,Bob_processor,num_bits,0.95)
+        Alice_protocol = AliceProtocol(nodeA,Alice_processor,num_bits,waitTime=waitTime)
+        Bob_protocol = BobProtocol(nodeB,Bob_processor,num_bits,threshold=threshold)
         Bob_protocol.start()
         Alice_protocol.start()
         #ns.logger.setLevel(1)
         stats = ns.sim_run()
         
+        resList.append(Bob_protocol.successfulRate) 
+        #print("Bob_protocol.successfulRate:",Bob_protocol.successfulRate)
         
-    return MyE91List_A, MyE91List_B
-
-
-
-
-
-
-
-# In[59]:
-
-
-#test
-myErrorModel=T1T2NoiseModel(T1=110, T2=109)
-run_E91_sim(1,10,1,noise_model=myErrorModel,loss_init=0,loss_len=0.1) 
-
-
-# In[18]:
-
-
-# plot function
-import matplotlib.pyplot as plt
-
-def E91_plot():
-    y_axis=[]
-    x_axis=[]
-    run_times=20
-    num_bits=50
-    min_dis=1
-    max_dis=10
-    
-    myErrorModel=DepolarNoiseModel(depolar_rate=1000)
-
-    # first curve
-    for i in range(min_dis,max_dis):
-        key_sum=0.0
-        x_axis.append(i/10)
-        key_list_A,key_list_B=run_E91_sim(run_times,num_bits,i/10
-            ,noise_model=myErrorModel,loss_init=0,loss_len=0.1) 
-        #feed runtimes, numberof bits and distance, use default loss model
-        #print("key_list_A: ",key_list_A)
-        for keyA,keyB in zip(key_list_A,key_list_B):
-            if keyA==keyB and keyA != None:  
-                #print("len keyA:",len(keyA))
-                key_sum+=len(keyA)
-        y_axis.append(key_sum/run_times/num_bits)
         
-    plt.plot(x_axis, y_axis, 'go-',label='loss_len=0.2')
-    
-    
-    y_axis.clear() 
-    x_axis.clear()
-    
-    
-    # second curve
-    for i in range(min_dis,max_dis):
-        key_sum=0.0
-        x_axis.append(i/10)
-        key_list_A,key_list_B=run_E91_sim(run_times,num_bits,i/10
-            ,noise_model=myErrorModel,loss_init=0,loss_len=0.9) 
-        
-        for keyA,keyB in zip(key_list_A,key_list_B):
-            if keyA==keyB and keyA != None: 
-                key_sum+=len(keyA)
-        y_axis.append(key_sum/run_times/num_bits)
-        
-    plt.plot(x_axis, y_axis, 'bo-',label='loss_len=0.4')
-    
-    
-    
-    plt.ylabel('average key length/max qubits length')
-    plt.xlabel('fibre lenth (km)')
-    
-    
-    plt.legend()
-    plt.savefig('plot.png')
-    plt.show()
-
-    
-
-E91_plot()
+    return sum(resList)/len(resList)
 
 
 # In[ ]:
 
 
+import matplotlib.pyplot as plt
 
+#threshold doesn't matter in this plot
+def QuantumToken_plot():
+    y_axis=[]
+    x_axis=[]
+    runTimes=5
+    
+    min_storetime=0
+    max_storetime=5000
+    
+    myMemNoise=T1T2NoiseModel(T1=10, T2=1)
+    myProcessNoise=DepolarNoiseModel(depolar_rate=50)
+
+    # first curve
+    for i in range(min_storetime,max_storetime,100): # from 0 to 10**8 ns
+        x_axis.append(i) # relate to unit
+        y_axis.append(run_QToken_sim(runTimes=runTimes,num_bits=100,fibre_len=10,waitTime=i
+            ,processNoiseModel=myProcessNoise,memNoiseModel=myMemNoise,loss_init=0.5,loss_len=0.2,threshold=0.854
+            ,fibreLoss_init=0.5,fibreLoss_len=0.2,QChDelay=1,CChDelay=0)) 
+
+        
+    plt.plot(x_axis, y_axis, 'r-',label='fibre length=10')
+    
+    '''
+    y_axis.clear() 
+    x_axis.clear()
+    
+    # second curve
+    for i in range(min_storetime,max_storetime,50): # from 0 to 10**8 ns
+        x_axis.append(i) # relate to unit
+        y_axis.append(run_QToken_sim(runTimes=runTimes,num_bits=100,fibre_len=50,waitTime=i
+            ,processNoiseModel=None,memNoiseModel=None,loss_init=0.5,loss_len=0.2,threshold=0.854
+            ,fibreLoss_init=0.5,fibreLoss_len=0.2,QChDelay=1,CChDelay=0)) 
+
+        
+    plt.plot(x_axis, y_axis, 'b-',label='fibre length=50')
+    '''
+     
+    plt.title('Quantum Token')
+    plt.ylabel('average successful rate')
+    plt.xlabel('token kept time (ns)') #µ
+
+    plt.legend()
+    plt.savefig('QTplotN113.png')
+    plt.show()
+
+    
+
+QuantumToken_plot()
 
