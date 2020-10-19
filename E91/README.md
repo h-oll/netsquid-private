@@ -8,12 +8,16 @@ E91 protocol is one of Quantum Key Distribution that generate a key pair within 
 
 ## To Do
 
-- Add graph.
+- Parameter tuning.
 
 ## Status
 
 E91 works on NS 0.10.
-Noises possible on quantum processors and fibres.
+Noises applicable on quantum processor/memory/gates/source. Loss applicable in channels.
+
+
+19/10/2020
+- Add a version to plot key rate. Including a simple function for key length calibration.
 
 07/09/2020
 - Integrated Qsource.
