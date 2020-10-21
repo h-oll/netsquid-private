@@ -206,3 +206,4 @@ if __name__ == '__main__':
         p2.start()
 
         stats = ns.sim_run()
+
