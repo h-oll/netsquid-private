@@ -26,10 +26,10 @@ def create_processor(depolar_rate, dephase_rate):
                             q_noise_model=measure_noise_model, apply_q_noise_after=False),
         PhysicalInstruction(instr.INSTR_MEASURE, duration=7, parallel=False, topology=[1])
     ]
-    memory_noise_model = DepolarNoiseModel(depolar_rate=depolar_rate)
+    # memory_noise_model = DepolarNoiseModel(depolar_rate=depolar_rate)
     processor = QuantumProcessor("quantum_processor",
                                  num_positions=3,
-                                 memory_noise_models=[memory_noise_model] * 2,
+                                 # memory_noise_models=[memory_noise_model] * 2,
                                  phys_instructions=physical_instructions)
     return processor
 
@@ -206,4 +206,3 @@ if __name__ == '__main__':
         p2.start()
 
         stats = ns.sim_run()
-
