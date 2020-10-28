@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[51]:
 
 
 import numpy as np
@@ -25,7 +25,7 @@ from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[13]:
+# In[52]:
 
 
 # General functions/Quantum programs
@@ -89,7 +89,7 @@ INSTR_Rv337 = IGate('Z Rotated -337.5',operator=R337.inv)
 INSTR_Swap = ISwap()
 
 
-# In[14]:
+# In[53]:
 
 
 # General functions/Quantum programs 
@@ -130,15 +130,15 @@ class MakeEPRpairsP02(QuantumProgram):
 Measure the qubits hold by this processor by basisList.
 input:
     basisList:list of int(0/1): indecate measurement basis
-
 '''
+
 class QMeasure(QuantumProgram):
     def __init__(self,basisList):
         self.basisList=basisList
         super().__init__()
 
     def program(self):
-        print("in QMeasure")
+        #print("in QMeasure")
         for i in range(0,len(self.basisList)):
             if self.basisList[int(i/2)] == 0:  # basisList 0:Z  , 1:X        
                 self.apply(INSTR_MEASURE, 
@@ -163,9 +163,9 @@ class AngleMeasure(QuantumProgram):
         super().__init__()
 
     def program(self):
-        print("in AngleMeasure")
-        print("self.positionInx",self.positionInx)
-        print("self.angleInx",self.angleInx)
+        #print("in AngleMeasure")
+        #print("self.positionInx",self.positionInx)
+        #print("self.angleInx",self.angleInx)
         for pos,angle in zip(self.positionInx,self.angleInx):
             if   angle == 1:
                 self.apply(INSTR_R22,pos)
@@ -270,7 +270,7 @@ class QSwap(QuantumProgram):
         super().__init__()
 
     def program(self):
-        print("in QSwap ")
+        #print("in QSwap ")
         self.apply(self.IST, qubit_indices=self.position, physical=True)
         yield self.run(parallel=False)    
 
@@ -285,27 +285,28 @@ class QCNOT(QuantumProgram):
         super().__init__()
 
     def program(self):
-        print("in QCNOT ")
+        #print("in QCNOT ")
         self.apply(INSTR_CNOT, qubit_indices=self.position, physical=True)
         yield self.run(parallel=False)
         
         
 
 
-# In[32]:
+# In[99]:
 
 
 # server protocol
 class ProtocolServer(NodeProtocol):
 
     def GetPGoutput_m1m2(self,QG):
-        print("S GetPGoutput_m1m2")
+        #print("S GetPGoutput_m1m2")
         tmp=getPGoutput(QG)
         #print("tmp:",tmp)
         self.m1=tmp[0]
-        self.m2=tmp[1]
-        
-    
+        try:
+            self.m2=tmp[1]
+        except:
+            pass
     
     def __init__(self,node,processor,port_names=["portQS_1","portCS_1","portCS_2"],realRound=5):
         super().__init__()
@@ -336,6 +337,7 @@ class ProtocolServer(NodeProtocol):
         clock = Clock("clock", frequency=freq, max_ticks=num)
         try:
             clock.ports["cout"].connect(self.S_Source.ports["trigger"])
+        
         except:
             print("alread connected")
         
@@ -345,7 +347,7 @@ class ProtocolServer(NodeProtocol):
     def store_output_from_port(self,message):
         self.port_output.append(message.items[0])
         if len(self.port_output)==4:
-            print("S store qubits:",self.port_output)
+            #print("S store qubits:",self.port_output)
             self.processor.put(qubits=self.port_output)
             
             # do H CNOT operation
@@ -370,13 +372,13 @@ class ProtocolServer(NodeProtocol):
     
     
     def run(self):
-        print("server on")
+        #print("server on")
         port = self.node.ports["portCS_1"]
         
         #receive classical from client
         yield self.await_port_input(port)
         rounds = port.rx_input().items
-        print("S received rounds:",rounds)
+        #print("S received rounds:",rounds)
         
         # send half of an EPRpair to client
         
@@ -386,29 +388,32 @@ class ProtocolServer(NodeProtocol):
         
         
         yield self.await_program(processor=self.processor)
-        print("S1 num_used_positions=",self.processor.num_used_positions)
+        #print("S1 num_used_positions=",self.processor.num_used_positions)
         self.S_sendEPR()
         
         
         port = self.node.ports["portCS_1"]
         #receive qubits from client
         yield self.await_port_input(port)
-        print("S2 num_used_positions=",self.processor.num_used_positions)
+        #print("S2 num_used_positions=",self.processor.num_used_positions)
         tmp=port.rx_input().items
-        print(tmp)
+        #print(tmp)
+        
+        '''
         if tmp[0]=="ACK":
-            print("S ACK received start swaping")
+            #print("S ACK received start swaping")
+        
         else:
             print(tmp[0])
             print("S ACK NOT received ERROR!!!")
-        
+        '''
         
         
         #Swap
         myQSwap=QSwap(INSTR_Swap,position=[0,2])
         self.processor.execute_program(myQSwap,qubit_mapping=[0,1,2])
         #yield self.await_program(processor=self.processor)
-        print("S myQSwap finished")
+        #print("S myQSwap finished")
         
         # send ACK
         
@@ -418,21 +423,21 @@ class ProtocolServer(NodeProtocol):
         port = self.node.ports["portCS_1"]
         yield self.await_port_input(port)
         tmp=port.rx_input().items
-        print("S received:",tmp)
-        
+        #print("S received:",tmp)
+        '''
         if tmp[0]=="ACK3":
             print("S ACK3 received start CNOT")
         else:
             print(tmp[0])
             print("S ACK3 NOT received ERROR!!!")
-        
+        '''
         
         
         myQCNOT=QCNOT(position=[0,2])
         self.processor.execute_program(myQCNOT,qubit_mapping=[0,1,2])
         self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         yield self.await_program(processor=self.processor)
-        print("S QCNOT finished")
+        #print("S QCNOT finished")
         
         #send ACK4
         self.node.ports["portCS_2"].tx_output("ACK4")
@@ -442,11 +447,11 @@ class ProtocolServer(NodeProtocol):
         port = self.node.ports["portCS_1"]
         yield self.await_port_input(port)
         tmp=port.rx_input().items
-        print("S receive delta:",tmp)
+        #print("S receive delta:",tmp)
         self.C_delta1=tmp[0]
         self.C_delta2=tmp[1]
-        print("S received self.C_delta1 :",self.C_delta1)
-        print("S received self.C_delta2 :",self.C_delta2)
+        #print("S received self.C_delta1 :",self.C_delta1)
+        #print("S received self.C_delta2 :",self.C_delta2)
         # create customized measurement
         
         
@@ -458,11 +463,18 @@ class ProtocolServer(NodeProtocol):
         self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         
         yield self.await_program(processor=self.processor)
-        print("S self.m1:",self.m1)
-        print("S self.m2:",self.m2)
+        #print("S self.m1:",self.m1)
+        #print("S self.m2:",self.m2)
+        
+        
+        #send m1 m2
+        self.node.ports["portCS_2"].tx_output([self.m1,self.m2])
+        
+        
+        
 
 
-# In[33]:
+# In[100]:
 
 
 # client protocol
@@ -471,20 +483,20 @@ class ProtocolClient(NodeProtocol):
     def myGetPGoutput1(self,QG):
         if self.d == 2 :
             self.z2 = getPGoutput(QG)[0]
-            print("C self.z2=",self.z2)
+            #print("C self.z2=",self.z2)
         elif self.d == 1 :
             self.p2 = getPGoutput(QG)[0]
-            print("C self.p2=",self.p2)
+            #print("C self.p2=",self.p2)
         else:
             print("error")
             
     def myGetPGoutput2(self,QG):
         if self.d == 2 :
             self.p1 = getPGoutput(QG)[0]
-            print("C self.p1=",self.p1)
+            #print("C self.p1=",self.p1)
         elif self.d == 1 :
             self.z1 = getPGoutput(QG)[0]
-            print("C self.z1=",self.z1)
+            #print("C self.z1=",self.z1)
         else:
             print("error")
             
@@ -519,10 +531,10 @@ class ProtocolClient(NodeProtocol):
         self.m1=None
         self.m2=None
         
-        
+        self.verified=False
     
     def run(self):
-        print("client on")
+        #print("client on")
         testsms=2
         self.node.ports[self.portNameC1].tx_output(testsms)
         
@@ -531,20 +543,13 @@ class ProtocolClient(NodeProtocol):
         yield self.await_port_input(port)
         
         aEPR=port.rx_input().items
-        print("C received qubits:",aEPR)
+        #print("C received qubits:",aEPR)
         self.processor.put(aEPR)
         
-        if self.d == 2 :
-            # measure the only qubit in Z basis
-            print("C case d=2")
-            myQMeasure=QMeasure([0]) 
-            self.processor.execute_program(myQMeasure,qubit_mapping=[0])
-            self.processor.set_program_done_callback(self.myGetPGoutput1,myQMeasure,once=True) #not working
-            self.processor.set_program_fail_callback(self.ProgramFail,once=True)
-            
-        else:
-            print("C case d=1")
+        if self.d == 1 :
+            #print("C case d=1")
             self.theta2=randint(0,7)
+            #print("!C r2 assigned")
             self.r2=randint(0,1)
             # measure by theta2
             myAngleMeasure=AngleMeasure([0],[self.theta2]) # first qubit
@@ -552,28 +557,37 @@ class ProtocolClient(NodeProtocol):
             self.processor.set_program_done_callback(self.myGetPGoutput1,myAngleMeasure,once=True)
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
             
+        else:
+            # measure the only qubit in Z basis
+            #print("C case d=2")
+            myQMeasure=QMeasure([0]) 
+            self.processor.execute_program(myQMeasure,qubit_mapping=[0])
+            self.processor.set_program_done_callback(self.myGetPGoutput1,myQMeasure,once=True) #not working
+            self.processor.set_program_fail_callback(self.ProgramFail,once=True)
+            
             
         yield self.await_program(processor=self.processor)
         #send ACK
-        print("C sending  ACK")
+        #print("C sending  ACK")
         self.node.ports["portCC_1"].tx_output("ACK")
 
-        print("C waiting for ACK2")
+        #print("C waiting for ACK2")
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)   
         tmp = port.rx_input().items
-        print("C received final:",tmp)
+        #print("C received final:",tmp)
         
         #measure
         if self.d==1:
-            print("C case d=1")
+            #print("C case d=1")
             myQMeasure=QMeasure([0]) 
             self.processor.execute_program(myQMeasure,qubit_mapping=[0])
             self.processor.set_program_done_callback(self.myGetPGoutput2,myQMeasure,once=True) #not working
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         else:
-            print("C case d=2")
+            #print("C case d=2")
             self.theta1=randint(0,7)
+            #print("!C r1 assigned")
             self.r1=randint(0,1)
             # measure by theta1
             myAngleMeasure=AngleMeasure([0],[self.theta1]) # first qubit
@@ -584,22 +598,22 @@ class ProtocolClient(NodeProtocol):
             
         yield self.await_program(processor=self.processor)
         # send ACK
-        print("C sending  ACK3")
+        #print("C sending  ACK3")
         self.node.ports["portCC_1"].tx_output("ACK3")
         
         # wait ACK4
-        print("C waiting for ACK4")
+        #print("C waiting for ACK4")
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)
         tmp = port.rx_input().items
-        print("C received :",tmp)
+        #print("C received :",tmp)
         
         
         # send theta1
-        print("C sending  delta1")
-        '''
-        scale x8 here ; 1 = 22.5 degree
-        '''
+        #print("C sending  delta1")
+        
+        # scale x8 here ; 1 = 22.5 degree
+        
         if self.d==1:
             self.delta1=randint(0,7)
             self.delta2=self.theta2+(self.p2+self.r2)*8
@@ -615,20 +629,55 @@ class ProtocolClient(NodeProtocol):
             self.delta2=self.delta2-16
         
         
-        print("C self.delta1:",self.delta1)
-        print("C self.delta2:",self.delta2)
+        #print("C self.delta1:",self.delta1)
+        #print("C self.delta2:",self.delta2)
+        
+        # send delta
         self.node.ports["portCC_1"].tx_output([self.delta1,self.delta2])
         
         
+        # receive measurement result
+        port = self.node.ports["portCC_2"]
+        yield self.await_port_input(port)
+        tmp = port.rx_input().items
+        self.m1=tmp[0]
+        try:
+            self.m2=tmp[1]
+        except:
+            pass
+        #print("C received measurement:",self.m1,self.m2)
         
+        if self.d==1:
+            #print("C d==1 case")
+            if (self.z1+self.r2)%2== self.m2:
+                #print("Varified!")
+                self.verified=True
+                #print("z1,r2,m2:",self.z1,self.r2,self.m2)
+            else:
+                #print("Failed!")
+                self.verified=False
+                #print("z1,r2,m2:",self.z1,self.r2,self.m2)
+        else: # d==2
+            #print("C d==2 case")
+            if (self.z2+self.r1)%2== self.m1:
+                #print("Varified!")
+                self.verified=True
+                #print("z2,r1,m1:",self.z2,self.r1,self.m1)
+            else:
+                #print("Failed!")
+                self.verified=False
+                #print("z2,r1,m1:",self.z2,self.r1,self.m1)
 
 
-# In[34]:
+# In[101]:
 
 
 # implementation & hardware configure
-def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
-               loss_init=0,loss_len=0):
+def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMmodel=None
+               ,loss_init=0.25,loss_len=0.2):
+    
+    resList=[]
+    successCount=0
     
     for i in range(runtimes): 
         
@@ -640,16 +689,13 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         nodeClient = Node("Client"  , port_names=["portQC_1","portCC_1","portCC_2"])
 
         # processors===============================================================
-        noise_model=None #try
-        
         
         processorServer=QuantumProcessor("processorServer", num_positions=10,
-            mem_noise_models=None, phys_instructions=[
-            PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
+            mem_noise_models=memNoiseMmodel, phys_instructions=[
+            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
             PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R22, duration=1, parallel=True),
@@ -689,12 +735,11 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         
         
         processorClient=QuantumProcessor("processorClient", num_positions=10,
-            mem_noise_models=None, phys_instructions=[
-            PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
+            mem_noise_models=memNoiseMmodel, phys_instructions=[
+            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
             PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R22, duration=1, parallel=True),
@@ -715,10 +760,10 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
 
         # channels==================================================================
         
-        #FibreDelayModel()
-    
+        
         MyQChannel=QuantumChannel("QChannel_S->C",delay=0
-            ,length=fibre_len,models=noise_model)
+            ,length=fibre_len
+            ,models={"myFibreLossModel": FibreLossModel(p_loss_init=loss_init, p_loss_length=loss_len, rng=None)})
         
         
         nodeServer.connect_to(nodeClient, MyQChannel,
@@ -744,11 +789,66 @@ def run_UBQC_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         protocolClient.start()
         #ns.logger.setLevel(1)
         stats = ns.sim_run()
+        
+        
+        resList.append(protocolClient.verified)
+        
+    for i in resList:
+        if i==True:
+            successCount+=1
+
+    return successCount/len(resList)
+        
 
 
-# In[35]:
+# In[114]:
+
+
+# plot function
+import matplotlib.pyplot as plt
+
+def UBQC_plot():
+    y_axis=[]
+    x_axis=[]
+    run_times=10
+    min_dis=0
+    max_dis=80
+    
+    mymemNoiseMmodel=T1T2NoiseModel(T1=11, T2=10)
+    myprocessorNoiseModel=DepolarNoiseModel(depolar_rate=200)
+
+    # first curve
+    for i in range(min_dis,max_dis,5):
+        
+        x_axis.append(i)
+        successRate=run_UBQC_sim(runtimes=run_times,fibre_len=i
+            ,processorNoiseModel=myprocessorNoiseModel
+            ,memNoiseMmodel=mymemNoiseMmodel,loss_init=0.25,loss_len=0.2)
+        
+        y_axis.append(successRate)
+        
+        
+        
+    plt.plot(x_axis, y_axis, 'go-',label='default fibre')
+    
+    plt.title('UBQC')
+    plt.ylabel('verified rate')
+    plt.xlabel('fibre length (km)')
+    
+    
+    plt.legend()
+    plt.savefig('plot1.png')
+    plt.show()
+
+    
+
+UBQC_plot()
+
+
+# In[110]:
 
 
 # test
-run_UBQC_sim()
+run_UBQC_sim(runtimes=10,fibre_len=10**-9
+    ,processorNoiseModel=None,memNoiseMmodel=None,loss_init=0,loss_len=0)
 
