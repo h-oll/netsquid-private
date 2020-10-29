@@ -3,7 +3,7 @@ import numpy as np
 import netsquid.components.instructions as instr
 from netsquid.nodes import Node, Network, DirectConnection
 from netsquid.components import QuantumChannel, QuantumProgram, ClassicalChannel, FibreDelayModel
-from netsquid.protocols import NodeProtocol
+from netsquid.protocols import NodeProtocol, Signals
 from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
 
 
@@ -41,6 +41,7 @@ class KeyReceiverProtocol(NodeProtocol):
         self.c_port_i = port_names[1]
         self.c_port_o = port_names[2]
         self.key_size = key_size
+        self.key = None
 
     def run(self):
         # Select random bases
@@ -72,7 +73,8 @@ class KeyReceiverProtocol(NodeProtocol):
         final_key = []
         for i in matched_indices:
             final_key.append(results[i])
-        print('Bob\'s key', final_key)
+        self.key = final_key
+        self.send_signal(signal_label=Signals.SUCCESS, result=final_key)
 
 
 class KeySenderProtocol(NodeProtocol):
@@ -87,6 +89,7 @@ class KeySenderProtocol(NodeProtocol):
         self.c_port_o = port_names[1]
         self.c_port_i = port_names[2]
         self.key_size = key_size
+        self.key = None
 
     def run(self):
         secret_key = np.random.randint(2, size=self.key_size)
@@ -114,7 +117,8 @@ class KeySenderProtocol(NodeProtocol):
         final_key = []
         for i in matched_indices:
             final_key.append(secret_key[i])
-        print('Alice\'s key', final_key)
+        self.key = final_key
+        self.send_signal(signal_label=Signals.SUCCESS, result=final_key)
 
 
 def create_processor():
