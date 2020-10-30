@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[39]:
 
 
 import numpy as np
@@ -25,7 +25,7 @@ from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[2]:
+# In[40]:
 
 
 # General functions/Quantum programs
@@ -89,7 +89,7 @@ INSTR_Rv337 = IGate('Z Rotated -337.5',operator=R337.inv)
 INSTR_Swap = ISwap()
 
 
-# In[3]:
+# In[41]:
 
 
 # General functions/Quantum programs 
@@ -292,7 +292,7 @@ class QCNOT(QuantumProgram):
         
 
 
-# In[4]:
+# In[46]:
 
 
 # server protocol
@@ -339,7 +339,7 @@ class ProtocolServer(NodeProtocol):
             clock.ports["cout"].connect(self.S_Source.ports["trigger"])
         
         except:
-            print("alread connected")
+            print("already connected")
         
         clock.start()
         
@@ -396,8 +396,9 @@ class ProtocolServer(NodeProtocol):
         #receive qubits from client
         yield self.await_port_input(port)
         #print("S2 num_used_positions=",self.processor.num_used_positions)
-        tmp=port.rx_input().items
-        #print(tmp)
+        ack=port.rx_input().items[0]
+        if ack!='ACK':
+            print("ACK ERROR!")
         
         '''
         if tmp[0]=="ACK":
@@ -422,7 +423,10 @@ class ProtocolServer(NodeProtocol):
         # waiting for ACK3
         port = self.node.ports["portCS_1"]
         yield self.await_port_input(port)
-        tmp=port.rx_input().items
+        ack=port.rx_input().items[0]
+        if ack!='ACK3':
+            print("ACK3 ERROR!")
+            
         #print("S received:",tmp)
         '''
         if tmp[0]=="ACK3":
@@ -474,7 +478,7 @@ class ProtocolServer(NodeProtocol):
         
 
 
-# In[29]:
+# In[47]:
 
 
 # client protocol
@@ -669,7 +673,7 @@ class ProtocolClient(NodeProtocol):
                 #print("z2,r1,m1:",self.z2,self.r1,self.m1)
 
 
-# In[36]:
+# In[48]:
 
 
 # implementation & hardware configure
@@ -845,7 +849,7 @@ def UBQC_plot():
 UBQC_plot()
 
 
-# In[35]:
+# In[50]:
 
 
 # test
