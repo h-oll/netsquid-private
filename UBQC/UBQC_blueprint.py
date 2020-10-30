@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[51]:
+# In[1]:
 
 
 import numpy as np
@@ -25,7 +25,7 @@ from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[52]:
+# In[2]:
 
 
 # General functions/Quantum programs
@@ -89,7 +89,7 @@ INSTR_Rv337 = IGate('Z Rotated -337.5',operator=R337.inv)
 INSTR_Swap = ISwap()
 
 
-# In[53]:
+# In[3]:
 
 
 # General functions/Quantum programs 
@@ -292,7 +292,7 @@ class QCNOT(QuantumProgram):
         
 
 
-# In[99]:
+# In[4]:
 
 
 # server protocol
@@ -384,7 +384,7 @@ class ProtocolServer(NodeProtocol):
         
         # gen 2 qubits
         self.S_genQubits(4)
-        
+        # EPR pair formed when port received
         
         
         yield self.await_program(processor=self.processor)
@@ -474,7 +474,7 @@ class ProtocolServer(NodeProtocol):
         
 
 
-# In[100]:
+# In[29]:
 
 
 # client protocol
@@ -506,7 +506,7 @@ class ProtocolClient(NodeProtocol):
         print("C programe failed!!")
     
     
-    def __init__(self,node,processor,port_names=["portQC_1","portCC_1","portCC_2"],maxRounds=10):
+    def __init__(self,node,processor,rounds,port_names=["portQC_1","portCC_1","portCC_2"],maxRounds=10):
         super().__init__()
         self.node=node
         self.processor=processor
@@ -514,6 +514,7 @@ class ProtocolClient(NodeProtocol):
         self.portNameC1=port_names[1]
         self.portNameC2=port_names[2]
         self.maxRounds=maxRounds
+        self.rounds=rounds
         self.d=randint(1,2)
         self.z1=None
         self.z2=None
@@ -534,22 +535,21 @@ class ProtocolClient(NodeProtocol):
         self.verified=False
     
     def run(self):
+        
         #print("client on")
-        testsms=2
-        self.node.ports[self.portNameC1].tx_output(testsms)
+        self.node.ports[self.portNameC1].tx_output(self.rounds)
         
         #receive qubits from client
         port = self.node.ports["portQC_1"]
         yield self.await_port_input(port)
         
-        aEPR=port.rx_input().items
-        #print("C received qubits:",aEPR)
-        self.processor.put(aEPR)
+        EPRpairs=port.rx_input().items
+        #print("C received qubits:",EPRpairs)
+        self.processor.put(EPRpairs)
         
         if self.d == 1 :
             #print("C case d=1")
             self.theta2=randint(0,7)
-            #print("!C r2 assigned")
             self.r2=randint(0,1)
             # measure by theta2
             myAngleMeasure=AngleMeasure([0],[self.theta2]) # first qubit
@@ -567,15 +567,20 @@ class ProtocolClient(NodeProtocol):
             
             
         yield self.await_program(processor=self.processor)
-        #send ACK
+        
+        # send ACK
         #print("C sending  ACK")
         self.node.ports["portCC_1"].tx_output("ACK")
 
         #print("C waiting for ACK2")
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)   
-        tmp = port.rx_input().items
-        #print("C received final:",tmp)
+        ack = port.rx_input().items[0]
+        #print("C received :",tmp)
+        
+        if ack!='ACK2':
+            print("ACK2 ERROR!")
+            
         
         #measure
         if self.d==1:
@@ -587,7 +592,6 @@ class ProtocolClient(NodeProtocol):
         else:
             #print("C case d=2")
             self.theta1=randint(0,7)
-            #print("!C r1 assigned")
             self.r1=randint(0,1)
             # measure by theta1
             myAngleMeasure=AngleMeasure([0],[self.theta1]) # first qubit
@@ -595,8 +599,9 @@ class ProtocolClient(NodeProtocol):
             self.processor.set_program_done_callback(self.myGetPGoutput2,myAngleMeasure,once=True)
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
             
-            
+        
         yield self.await_program(processor=self.processor)
+        
         # send ACK
         #print("C sending  ACK3")
         self.node.ports["portCC_1"].tx_output("ACK3")
@@ -605,30 +610,25 @@ class ProtocolClient(NodeProtocol):
         #print("C waiting for ACK4")
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)
-        tmp = port.rx_input().items
-        #print("C received :",tmp)
+        ack = port.rx_input().items[0]
         
+        if ack!='ACK4':
+            print("ACK4 ERROR!")
+            #print("C received :",ack)
         
         # send theta1
-        #print("C sending  delta1")
-        
-        # scale x8 here ; 1 = 22.5 degree
-        
+
         if self.d==1:
-            self.delta1=randint(0,7)
+            self.delta1=randint(0,7)                      # scale x8 ; 1 = 22.5 degree
             self.delta2=self.theta2+(self.p2+self.r2)*8
             
         else:    
             self.delta1=self.theta1+(self.p1+self.r1)*8
             self.delta2=randint(0,7)
             
-            
-        while self.delta1 >= 16:
-            self.delta1=self.delta1-16
-        while self.delta2 >= 16:
-            self.delta2=self.delta2-16
         
-        
+        self.delta1%=16
+        self.delta2%=16
         #print("C self.delta1:",self.delta1)
         #print("C self.delta2:",self.delta2)
         
@@ -639,10 +639,10 @@ class ProtocolClient(NodeProtocol):
         # receive measurement result
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)
-        tmp = port.rx_input().items
-        self.m1=tmp[0]
+        mesres = port.rx_input().items
+        self.m1=mesres[0]
         try:
-            self.m2=tmp[1]
+            self.m2=mesres[1]
         except:
             pass
         #print("C received measurement:",self.m1,self.m2)
@@ -669,7 +669,7 @@ class ProtocolClient(NodeProtocol):
                 #print("z2,r1,m1:",self.z2,self.r1,self.m1)
 
 
-# In[101]:
+# In[36]:
 
 
 # implementation & hardware configure
@@ -784,7 +784,7 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
 
 
         protocolServer = ProtocolServer(nodeServer,processorServer)
-        protocolClient = ProtocolClient(nodeClient,processorClient)
+        protocolClient = ProtocolClient(nodeClient,processorClient,1)
         protocolServer.start()
         protocolClient.start()
         #ns.logger.setLevel(1)
@@ -801,7 +801,7 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
         
 
 
-# In[114]:
+# In[38]:
 
 
 # plot function
@@ -845,10 +845,16 @@ def UBQC_plot():
 UBQC_plot()
 
 
-# In[110]:
+# In[35]:
 
 
 # test
 run_UBQC_sim(runtimes=10,fibre_len=10**-9
     ,processorNoiseModel=None,memNoiseMmodel=None,loss_init=0,loss_len=0)
+
+
+# In[ ]:
+
+
+
 
