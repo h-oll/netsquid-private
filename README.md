@@ -19,24 +19,21 @@ The code is divided into blocks, each block defines functions related to their b
 
   This block contains all import instructions, it may include other protocols as well.
 
-2. **General Functions**
+2. **General Functions and Quantum Program Definition**
 
-  Functions that can be reused by other protocols belong here.
+  Functions and Quantum Programs that are reusable are listed here.
+  Planed to move this part to local library in the future.
 
-3. **Quantum Processor/Program Definition**
-
-  Quantum Processor and Quantum Programs are defined here.
-
-4. **Local Protocol Party A**
+3. **Local Protocol Party A**
 
   A customized local protocol representing one of the party.
 
-5. **Local Protocol Party B**
+4. **Local Protocol Party B**
 
   A customized local protocol representing another one of the party.
 
 
-6. **Implementation and Hardware Configuration**
+5. **Implementation and Hardware Configuration**
 
   Implementation function includes hardware configuration and protocol function calls.
   Hardware environment is configured/reconfigured right before every simulation.
@@ -45,7 +42,7 @@ The code is divided into blocks, each block defines functions related to their b
   then take average value of certain attribute of the protocol for statistical use.
 
 
-7. **Plot Function** -opt
+6. **Plot Function** -opt
 
   A function to plot statistical results of above protocol.
 
@@ -64,11 +61,13 @@ The code is divided into blocks, each block defines functions related to their b
 ## Quantum Teleportation
 - State Teleportation
 
+## Universal Blind Quantum Computing 
+- Verifiable Universal Blind Quantum Computing
+
 ## Others
 - QLine
 - Quantum Memory
 - NetSquid Library
-- Universal Blind Quantum Computing 
 
 
 ## Contact
