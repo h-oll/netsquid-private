@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[39]:
+# In[22]:
 
 
 import numpy as np
@@ -25,7 +25,7 @@ from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[40]:
+# In[23]:
 
 
 # General functions/Quantum programs
@@ -89,7 +89,7 @@ INSTR_Rv337 = IGate('Z Rotated -337.5',operator=R337.inv)
 INSTR_Swap = ISwap()
 
 
-# In[41]:
+# In[24]:
 
 
 # General functions/Quantum programs 
@@ -110,21 +110,7 @@ class PrepareEPRpairs(QuantumProgram):
                 self.apply(INSTR_CNOT, [qList_idx[i-1], qList_idx[i]])
         yield self.run(parallel=False)
 
-        
-        
-#customized
-class MakeEPRpairsP02(QuantumProgram):
-    def __init__(self):
-        super().__init__()
-    def program(self):
-        # create multiEPR
-        self.apply(INSTR_H, 0)
-        self.apply(INSTR_CNOT, [0, 2])
-        yield self.run(parallel=False)
-        
-        
-        
-
+ 
 
 '''
 Measure the qubits hold by this processor by basisList.
@@ -275,24 +261,24 @@ class QSwap(QuantumProgram):
         yield self.run(parallel=False)    
 
 '''
-Apply CNOT in a Qmem.
+Apply CZ in a Qmem.
 input:
-    position:(list of two. ex [0,1])position to apply CNOT
+    position:(list of two. ex [0,1])position to apply CZ
 '''
-class QCNOT(QuantumProgram):
+class QCZ(QuantumProgram):
     def __init__(self,position):
         self.position=position
         super().__init__()
 
     def program(self):
-        #print("in QCNOT ")
-        self.apply(INSTR_CNOT, qubit_indices=self.position, physical=True)
+        #print("in QCZ ")
+        self.apply(INSTR_CZ, qubit_indices=self.position, physical=True)
         yield self.run(parallel=False)
         
         
 
 
-# In[46]:
+# In[25]:
 
 
 # server protocol
@@ -354,7 +340,6 @@ class ProtocolServer(NodeProtocol):
             # PrepareEPRpairs
             prepareEPRpairs=PrepareEPRpairs(2)
             
-            #prepareEPRpairs=MakeEPRpairsP02()
             
             self.processor.execute_program(
                 prepareEPRpairs,qubit_mapping=[i for  i in range(0, 4)])
@@ -437,11 +422,11 @@ class ProtocolServer(NodeProtocol):
         '''
         
         
-        myQCNOT=QCNOT(position=[0,2])
-        self.processor.execute_program(myQCNOT,qubit_mapping=[0,1,2])
+        myQCZ=QCZ(position=[0,2])
+        self.processor.execute_program(myQCZ,qubit_mapping=[0,1,2])
         self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         yield self.await_program(processor=self.processor)
-        #print("S QCNOT finished")
+        #print("S QCZ finished")
         
         #send ACK4
         self.node.ports["portCS_2"].tx_output("ACK4")
@@ -478,7 +463,7 @@ class ProtocolServer(NodeProtocol):
         
 
 
-# In[47]:
+# In[26]:
 
 
 # client protocol
@@ -673,7 +658,7 @@ class ProtocolClient(NodeProtocol):
                 #print("z2,r1,m1:",self.z2,self.r1,self.m1)
 
 
-# In[48]:
+# In[27]:
 
 
 # implementation & hardware configure
@@ -700,6 +685,7 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
             PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_CZ,duration=1,q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
             PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R22, duration=1, parallel=True),
@@ -805,7 +791,7 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
         
 
 
-# In[38]:
+# In[30]:
 
 
 # plot function
@@ -826,9 +812,9 @@ def UBQC_plot():
         
         x_axis.append(i)
         successRate=run_UBQC_sim(runtimes=run_times,fibre_len=i
-            ,processorNoiseModel=myprocessorNoiseModel
-            ,memNoiseMmodel=mymemNoiseMmodel,loss_init=0.25,loss_len=0.2)
-        
+            ,processorNoiseModel=None   
+            ,memNoiseMmodel=None)
+        #myprocessorNoiseModel   # mymemNoiseMmodel,loss_init=0.25,loss_len=0.2
         y_axis.append(successRate)
         
         
@@ -841,7 +827,7 @@ def UBQC_plot():
     
     
     plt.legend()
-    plt.savefig('plot1.png')
+    plt.savefig('plot2.png')
     plt.show()
 
     
@@ -849,11 +835,11 @@ def UBQC_plot():
 UBQC_plot()
 
 
-# In[50]:
+# In[28]:
 
 
 # test
-run_UBQC_sim(runtimes=10,fibre_len=10**-9
+run_UBQC_sim(runtimes=10,fibre_len=0
     ,processorNoiseModel=None,memNoiseMmodel=None,loss_init=0,loss_len=0)
 
 
