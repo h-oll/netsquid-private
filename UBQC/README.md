@@ -6,7 +6,7 @@
  1. C chooses d.
  2. S generates 4 qubits.
  3. S makes 2 EPR pairs.
- 4. S sends two qubit to C, sharing 2 EPR pairs.
+ 4. S sends two qubit(second and fourth) to C, sharing 2 EPR pairs.
  5. C if d=1, randomly chooses theda2 and r2. Measure the first qubit by theta2. Assign result to p2.
       if d=2, measures the first qubit in standard basis. Assign result to z2.
  6. C sends ACK to S.
