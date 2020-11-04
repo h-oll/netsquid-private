@@ -4,7 +4,7 @@
 
 ### test subprotocol Steps
  1. C chooses d.
- 2. S generates 4 qubits.
+ 2. S generates 4 qubits.(first paired with second, third paired with forth)
  3. S makes 2 EPR pairs.
  4. S sends two qubit(second and fourth) to C, sharing 2 EPR pairs.
  5. C if d=1, randomly chooses theda2 and r2, measure the first qubit by theta2, assign result to p2.
