@@ -19,7 +19,7 @@
 - delta1: A or B
 - delta2: A or B
 
-All angle measurements are along Z-axis
+All angle measurements are rotated along Z-axis.
 
 ### Test subprotocol variable Steps
 
