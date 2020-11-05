@@ -37,7 +37,7 @@ All angle measurements are along Z-axis
  
       if d=2, randomly chooses theta1 and r1, measure the first qubit by theta2. Assign result to p1.
 10. C sends ACK3 to S.
-11. S does CZ wiht first and third qubits.
+11. S apply CZ with first and third qubits.
 12. S sends ACK4 to C.
 13. C if d=1, randomly chooses delta1, assign delta2=theta2+(p2+r2)*pi.
 
