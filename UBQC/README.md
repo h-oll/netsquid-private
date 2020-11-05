@@ -4,20 +4,20 @@
 
 
 ### Test subprotocol variable ranges
-- range A=n*pi/8, n=[0~7]
-- range B=n*pi/8, n=[0~15]
+- range A=n*pi/8, n=[0,7]
+- range B=n*pi/8, n=[0,15]
 - theta1: A
 - theta2: A
 - r1:[0,1]
 - r2:[0,1]
-- delta1: A or B
-- delta2: A or B
 
 **results:**
 - p1:[0,1]
 - p2:[0,1]
 - z1:[0,1]
 - z2:[0,1]
+- delta1: A or B
+- delta2: A or B
 
 All angle measurements are along Z-axis
 
