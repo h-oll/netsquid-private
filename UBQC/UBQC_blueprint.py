@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[22]:
+# In[15]:
 
 
 import numpy as np
@@ -25,7 +25,7 @@ from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[23]:
+# In[16]:
 
 
 # General functions/Quantum programs
@@ -86,10 +86,10 @@ INSTR_Rv292 = IGate('Z Rotated -292.5',operator=R292.inv)
 INSTR_Rv315 = IGate('Z Rotated -315  ',operator=R315.inv)
 INSTR_Rv337 = IGate('Z Rotated -337.5',operator=R337.inv)
 
-INSTR_Swap = ISwap()
+#INSTR_Swap = ISwap()
 
 
-# In[24]:
+# In[26]:
 
 
 # General functions/Quantum programs 
@@ -126,7 +126,7 @@ class QMeasure(QuantumProgram):
     def program(self):
         #print("in QMeasure")
         for i in range(0,len(self.basisList)):
-            if self.basisList[int(i/2)] == 0:  # basisList 0:Z  , 1:X        
+            if self.basisList[int(i/2)] == 0:  # basisList 0:Z  , 1:X    
                 self.apply(INSTR_MEASURE, 
                     qubit_indices=i, output_key=str(i),physical=True) 
             else:                              
@@ -155,66 +155,66 @@ class AngleMeasure(QuantumProgram):
         for pos,angle in zip(self.positionInx,self.angleInx):
             if   angle == 1:
                 self.apply(INSTR_R22,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="1",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv22,pos)
             elif angle == 2:
                 self.apply(INSTR_R45,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="2",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv45,pos)
             elif angle == 3:
                 self.apply(INSTR_R67,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="3",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv67,pos)
             elif angle== 4:
                 self.apply(INSTR_R90,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="4",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv90,pos)
             elif angle== 5:
                 self.apply(INSTR_R112,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="5",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv112,pos)
             elif angle== 6:
                 self.apply(INSTR_R135,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="6",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv135,pos)
             elif angle== 7:
                 self.apply(INSTR_R157,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="7",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv157,pos)
             elif angle== 8:
                 self.apply(INSTR_R180,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="8",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv180,pos)
             elif angle== 9:
                 self.apply(INSTR_R202,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="9",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv202,pos)
             elif angle== 10:
                 self.apply(INSTR_R225,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="10",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv225,pos)
             elif angle== 11:
                 self.apply(INSTR_R247,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="11",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv247,pos)
             elif angle== 12:
                 self.apply(INSTR_R270,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="12",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv270,pos)
             elif angle== 13:
                 self.apply(INSTR_R292,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="13",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv292,pos)
             elif angle== 14:
                 self.apply(INSTR_R315,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="14",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv315,pos)
             elif angle== 15:
                 self.apply(INSTR_R337,pos)
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="15",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv337,pos)
             else:  # angle== 0
-                self.apply(INSTR_MEASURE,qubit_indices=pos, output_key="0",physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
         
         
         yield self.run(parallel=False)
@@ -239,6 +239,7 @@ def getPGoutput(Pg):
     #take value
     for k, v in newDict:
         resList.append(v[0])
+        #print("k,v: ",k,v[0])
     return resList
 
 
@@ -250,14 +251,16 @@ input:
 '''
 
 class QSwap(QuantumProgram):
-    def __init__(self,IST,position):
-        self.IST=IST
+    def __init__(self,position):
         self.position=position
         super().__init__()
+        if len(position)!=2:
+            print("Error parameters in QSwap!")
+        
 
     def program(self):
         #print("in QSwap ")
-        self.apply(self.IST, qubit_indices=self.position, physical=True)
+        self.apply(INSTR_SWAP, qubit_indices=self.position, physical=True)
         yield self.run(parallel=False)    
 
 '''
@@ -278,7 +281,7 @@ class QCZ(QuantumProgram):
         
 
 
-# In[25]:
+# In[27]:
 
 
 # server protocol
@@ -289,10 +292,7 @@ class ProtocolServer(NodeProtocol):
         tmp=getPGoutput(QG)
         #print("tmp:",tmp)
         self.m1=tmp[0]
-        try:
-            self.m2=tmp[1]
-        except:
-            pass
+        self.m2=tmp[1]
     
     def __init__(self,node,processor,port_names=["portQS_1","portCS_1","portCS_2"],realRound=5):
         super().__init__()
@@ -392,12 +392,14 @@ class ProtocolServer(NodeProtocol):
         else:
             print(tmp[0])
             print("S ACK NOT received ERROR!!!")
+        
         '''
         
-        
         #Swap
-        myQSwap=QSwap(INSTR_Swap,position=[0,2])
+        myQSwap=QSwap(position=[0,2])
         self.processor.execute_program(myQSwap,qubit_mapping=[0,1,2])
+        
+        
         #yield self.await_program(processor=self.processor)
         #print("S myQSwap finished")
         
@@ -436,11 +438,10 @@ class ProtocolServer(NodeProtocol):
         port = self.node.ports["portCS_1"]
         yield self.await_port_input(port)
         tmp=port.rx_input().items
-        #print("S receive delta:",tmp)
         self.C_delta1=tmp[0]
         self.C_delta2=tmp[1]
-        #print("S received self.C_delta1 :",self.C_delta1)
-        #print("S received self.C_delta2 :",self.C_delta2)
+        #print("S received self.C_delta1 :",self.C_delta2)
+        
         # create customized measurement
         
         
@@ -452,8 +453,8 @@ class ProtocolServer(NodeProtocol):
         self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         
         yield self.await_program(processor=self.processor)
-        #print("S self.m1:",self.m1)
-        #print("S self.m2:",self.m2)
+        #print("S self.m1 m2:",self.m1,self.m2)
+
         
         
         #send m1 m2
@@ -463,7 +464,7 @@ class ProtocolServer(NodeProtocol):
         
 
 
-# In[26]:
+# In[28]:
 
 
 # client protocol
@@ -543,6 +544,7 @@ class ProtocolClient(NodeProtocol):
             # measure by theta2
             myAngleMeasure=AngleMeasure([0],[self.theta2]) # first qubit
             self.processor.execute_program(myAngleMeasure,qubit_mapping=[0])
+            # assign p2
             self.processor.set_program_done_callback(self.myGetPGoutput1,myAngleMeasure,once=True)
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
             
@@ -551,7 +553,8 @@ class ProtocolClient(NodeProtocol):
             #print("C case d=2")
             myQMeasure=QMeasure([0]) 
             self.processor.execute_program(myQMeasure,qubit_mapping=[0])
-            self.processor.set_program_done_callback(self.myGetPGoutput1,myQMeasure,once=True) #not working
+            # assign z2
+            self.processor.set_program_done_callback(self.myGetPGoutput1,myQMeasure,once=True) 
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
             
             
@@ -575,7 +578,7 @@ class ProtocolClient(NodeProtocol):
         if self.d==1:
             #print("C case d=1")
             myQMeasure=QMeasure([0]) 
-            self.processor.execute_program(myQMeasure,qubit_mapping=[0])
+            self.processor.execute_program(myQMeasure,qubit_mapping=[0,1])
             self.processor.set_program_done_callback(self.myGetPGoutput2,myQMeasure,once=True) #not working
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         else:
@@ -583,8 +586,8 @@ class ProtocolClient(NodeProtocol):
             self.theta1=randint(0,7)
             self.r1=randint(0,1)
             # measure by theta1
-            myAngleMeasure=AngleMeasure([0],[self.theta1]) # first qubit
-            self.processor.execute_program(myAngleMeasure,qubit_mapping=[0])
+            myAngleMeasure=AngleMeasure([1],[self.theta1]) # first qubit
+            self.processor.execute_program(myAngleMeasure,qubit_mapping=[0,1])
             self.processor.set_program_done_callback(self.myGetPGoutput2,myAngleMeasure,once=True)
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
             
@@ -618,8 +621,7 @@ class ProtocolClient(NodeProtocol):
         
         self.delta1%=16
         self.delta2%=16
-        #print("C self.delta1:",self.delta1)
-        #print("C self.delta2:",self.delta2)
+        #print("C delta1 delta2:",self.delta1,self.delta2)
         
         # send delta
         self.node.ports["portCC_1"].tx_output([self.delta1,self.delta2])
@@ -628,12 +630,10 @@ class ProtocolClient(NodeProtocol):
         # receive measurement result
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)
-        mesres = port.rx_input().items
-        self.m1=mesres[0]
-        try:
-            self.m2=mesres[1]
-        except:
-            pass
+        measRes = port.rx_input().items
+        #print("C received measurement results: ",measRes)
+        self.m1=measRes[0]
+        self.m2=measRes[1]
         #print("C received measurement:",self.m1,self.m2)
         
         if self.d==1:
@@ -658,7 +658,7 @@ class ProtocolClient(NodeProtocol):
                 #print("z2,r1,m1:",self.z2,self.r1,self.m1)
 
 
-# In[27]:
+# In[29]:
 
 
 # implementation & hardware configure
@@ -720,7 +720,7 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
             PhysicalInstruction(INSTR_Rv315, duration=1, parallel=True),
             PhysicalInstruction(INSTR_Rv337, duration=1, parallel=True),
             
-            PhysicalInstruction(INSTR_Swap, duration=1, parallel=True)])
+            PhysicalInstruction(INSTR_SWAP, duration=1, parallel=True)])
         
         
         
@@ -788,10 +788,17 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
             successCount+=1
 
     return successCount/len(resList)
-        
 
 
 # In[30]:
+
+
+# test
+run_UBQC_sim(runtimes=3000,fibre_len=0
+    ,processorNoiseModel=None,memNoiseMmodel=None,loss_init=0,loss_len=0)
+
+
+# In[54]:
 
 
 # plot function
@@ -827,20 +834,12 @@ def UBQC_plot():
     
     
     plt.legend()
-    plt.savefig('plot2.png')
+    plt.savefig('plot4.png')
     plt.show()
 
-    
+
 
 UBQC_plot()
-
-
-# In[28]:
-
-
-# test
-run_UBQC_sim(runtimes=10,fibre_len=0
-    ,processorNoiseModel=None,memNoiseMmodel=None,loss_init=0,loss_len=0)
 
 
 # In[ ]:
