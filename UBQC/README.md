@@ -19,7 +19,8 @@
 - delta1: A or B
 - delta2: A or B
 
-All angle measurements are rotated along Z-axis.
+All angle measurements are rotated along Z-axis. Following 3 steps on a qubit:
+rotate angle *Ang* -> measure in X basis -> rotate angle *-Ang*
 
 ### Test subprotocol variable Steps
 
