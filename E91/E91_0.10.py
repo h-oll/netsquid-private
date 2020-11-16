@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[34]:
+# In[1]:
 
 
 import numpy as np
@@ -23,20 +23,39 @@ from netsquid.components import QSource,Clock
 from netsquid.components.qsource import SourceStatus
 
 from netsquid.components.models.qerrormodels import FibreLossModel
+from netsquid.components.models.delaymodels import FibreDelayModel
 
 
-# In[35]:
+# In[2]:
 
 
 # General function
-
-
 '''
 Simply returns a list with 0 or 1 in given length.
+
 '''
 def Random_basis_gen(length):
     return [randint(0,1) for i in range(length)]
+    
+    
+    
+    
+    
+'''
+Simply returns a list with 0 or 1 in given length.
+75% H meas
+25% stadard meas
 
+'''
+def Random_basis_gen_75(length):
+    res=[]
+    for i in range(length):
+        tmp=randint(0,4)
+        if tmp==0:
+            res.append(0)   #standard basis
+        else:
+            res.append(1)   #Hardamard basis
+    return res
 
 
 '''
@@ -70,6 +89,12 @@ def Compare_basis(loc_basis_list,rem_basis_list,loc_res):
             loc_res.pop(i)
         
     return loc_res
+
+
+
+
+
+
 
 
 
@@ -120,10 +145,42 @@ def lenfilter(var):
         return True
     else: 
         return False
-  
+
+    
+    
+    
+'''
+To check which qubits are lost in given qubit list.
+In this protocol, all indexs in qList is even.
+Usaully minBound=2 and maxBound=num_bits*2
+
+input:
+qList(list of qubits): A qubit list, which might loss some of the qubits. 
+minBound(int): A integer indicating the first index of qubit. 
+maxBound(int): A integer indicating the last index of qubit.
+
+output:
+A list of index, indicating which qubits are lost.
+[1,5] means first and 5th qubit are lost, indicator starts by 1.(no value below 1 allowed)
+'''
+
+def CheckLoss(qList,minBound,maxBound):
+    RemainList=[]
+    for i in range(len(qList)):
+        RemainList.append(int(qList[i].name[14:-len('-')-1]))    # get index from bits
+    
+    #print("remaining list num_inx: ",RemainList)
+    
+    completeList=[i for i in range(minBound,maxBound+1,2)]
+    #print("completeList: ",completeList)
+    
+    res=[item for item in completeList if item not in RemainList]
+    #print("res: ",res)
+    
+    return res
 
 
-# In[36]:
+# In[3]:
 
 
 # class of quantum program
@@ -166,24 +223,34 @@ class QG_A_measure(QuantumProgram):
         
 
 class QG_B_measure(QuantumProgram):
-    def __init__(self,basisList,num_bits):
+    def __init__(self,basisList,numValidQubits):
         self.basisList=basisList
-        self.num_bits=num_bits
+        self.numValidQubits=numValidQubits
         super().__init__()
 
 
     def program(self):   
+        counter=0
         for i in range(len(self.basisList)):
             if self.basisList[i] == 0:                  # standard basis
                 self.apply(INSTR_MEASURE, 
-                    qubit_indices=i, output_key=str(i),physical=True) 
-            else:                              # 1 case # Hadamard basis
+                    qubit_indices=counter, output_key=str(i),physical=True) 
+                counter+=1
+            elif self.basisList[i] == 1:                # 1 case # Hadamard basis
                 self.apply(INSTR_MEASURE_X, 
-                    qubit_indices=i, output_key=str(i),physical=True) 
+                    qubit_indices=counter, output_key=str(i),physical=True) 
+                counter+=1
+            else:   # loss case
+                pass
+                
         yield self.run(parallel=False)
+        
+
+def ProgramFail():
+    print("A programe failed!!")
 
 
-# In[61]:
+# In[4]:
 
 
 class AliceProtocol(NodeProtocol):
@@ -198,10 +265,12 @@ class AliceProtocol(NodeProtocol):
         self.portNameC1=port_names[1]
         self.portNameC2=port_names[2]
         self.EPRList=None
-        self.basisList=Random_basis_gen(self.num_bits)
+        self.basisList=Random_basis_gen_75(self.num_bits)
         self.loc_mesRes=[]
         self.key=None
         self.sourceQList=[]
+        
+        
         
         #generat qubits from source
         self.A_Source = QSource("Alice_source"
@@ -289,7 +358,7 @@ class AliceProtocol(NodeProtocol):
         self.loc_mesRes=getPGoutput(self.myQG_A_measure)
 
 
-# In[62]:
+# In[5]:
 
 
 class BobProtocol(NodeProtocol):
@@ -310,8 +379,10 @@ class BobProtocol(NodeProtocol):
         self.PG_B=None
         self.lossList=[]
         self.firstLoss=0
+        self.endTime=None
+        self.basisList=Random_basis_gen_75(num_bits)
         
-
+        
     # =======================================B run ============================
     def run(self):
         
@@ -328,33 +399,47 @@ class BobProtocol(NodeProtocol):
         yield self.await_port_input(port)
         qubitList.append(port.rx_input().items)
         #print("B received qubits:",qubitList)
-        self.B_checkLoss(qubitList[0])
+        #self.B_checkLoss(qubitList[0])
+        
+        self.lossList=CheckLoss(qubitList[0],2,2*self.num_bits)
         
         
         #put qubits into B memory
         for qubit in qubitList:
             self.processor.put(qubit)
+            
+        # B update measurement basis according to loss
+        for pos, value in enumerate(self.lossList):
+        
+            self.basisList[int(value/2-1)]=str('-')
         
         self.myQG_B_measure=QG_B_measure(
-            basisList=self.basisList,num_bits=self.num_bits)
+            basisList=self.basisList,numValidQubits=self.num_bits-len(self.lossList))
         self.processor.execute_program(
             self.myQG_B_measure,qubit_mapping=[i for  i in range(0,self.num_bits)])
         
         # get meas result
         self.processor.set_program_done_callback(self.B_getPGoutput,once=True)
+        self.processor.set_program_fail_callback(ProgramFail,once=True)
+        
+        
         
         yield self.await_program(processor=self.processor)
         
-
-        # add Loss case
-        self.loc_measRes=AddLossCase(self.lossList,self.loc_measRes)
-        self.basisList=AddLossCase(self.lossList,self.basisList)
+        #padding loc_measRes
+        #shrink lossList scale to half
+        self.lossList=[int(i/2) for i in self.lossList]
         
-        # add first loss
-        if self.firstLoss>=1:   
-            for i in range(self.firstLoss):
-                self.loc_measRes.insert(0,-1)
-                self.basisList.insert(0,-1)
+        tmpList=[]
+        for i in range(self.num_bits):
+            if i+1 in self.lossList:
+                tmpList.append(str('-'))
+            else:
+                tmpList.append(self.loc_measRes.pop(0))
+        
+        self.loc_measRes=tmpList
+        
+        
         
         # self.B_send_basis()
         self.node.ports[self.portNameC1].tx_output(self.basisList)
@@ -369,9 +454,10 @@ class BobProtocol(NodeProtocol):
         
         self.key=''.join(map(str, self.loc_measRes))
         #print("B key:",self.key)
+        self.endTime=ns.sim_time()
         
         
-        
+    '''
     def B_checkLoss(self,qList):
         num_inx=int(qList[0].name[14:-len('-')-1]) # get index from bits
 
@@ -387,7 +473,7 @@ class BobProtocol(NodeProtocol):
                 num_inx+=2
                 
         # init B's basisList
-        self.basisList=Random_basis_gen(len(qList))
+        self.basisList=Random_basis_gen_75(len(qList))
         
         # check for first N qubit loss
         if self.num_bits-len(self.lossList)>len(qList):
@@ -397,20 +483,27 @@ class BobProtocol(NodeProtocol):
         else:
             self.firstLoss=0
 
-    
+    '''
     def B_getPGoutput(self):
         self.loc_measRes=getPGoutput(self.myQG_B_measure)
 
 
-# In[65]:
+# In[6]:
 
 
 # implementation & hardware configure
-def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
-               loss_init=0,loss_len=0):
+#import difflib
+from difflib import SequenceMatcher
+
+def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,memNoiseMmodel=None,processorNoiseModel=None
+               ,loss_init=0,loss_len=0,QChV=2.083*10**-4,CChV=2.083*10**-4):
     
     MyE91List_A=[]  # local protocol list A
     MyE91List_B=[]  # local protocol list B
+    MyKeyRateList=[]
+    
+    A_originBasisList=[]
+    B_measureBasisList=[]
     
     for i in range(runtimes): 
         
@@ -423,34 +516,35 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
 
         # processors===============================================================
         #noise_model=None
-        Alice_processor=QuantumProcessor("processor_A", num_positions=3*10**4,
-            mem_noise_models=None, phys_instructions=[
+        Alice_processor=QuantumProcessor("processor_A", num_positions=10**5,
+            mem_noise_models=memNoiseMmodel, phys_instructions=[
             PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
+            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_CNOT,duration=10,q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_MEASURE, duration=10,q_noise_model=processorNoiseModel, parallel=True),
+            PhysicalInstruction(INSTR_MEASURE_X, duration=10,q_noise_model=processorNoiseModel, parallel=True)])
 
 
-        Bob_processor=QuantumProcessor("processor_B", num_positions=3*10**4,
-            mem_noise_models=None, phys_instructions=[
+        Bob_processor=QuantumProcessor("processor_B", num_positions=10**5,
+            mem_noise_models=memNoiseMmodel, phys_instructions=[
             PhysicalInstruction(INSTR_INIT, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=noise_model),
-            PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True)])
+            PhysicalInstruction(INSTR_X, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_CNOT,duration=10,q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_MEASURE, duration=10,q_noise_model=processorNoiseModel, parallel=True),
+            PhysicalInstruction(INSTR_MEASURE_X, duration=10,q_noise_model=processorNoiseModel, parallel=True)])
 
 
         # channels==================================================================
         
         MyQChannel=QuantumChannel("QChannel_A->B",delay=10
             ,length=fibre_len
-            ,models={"myFibreLossModel": FibreLossModel(p_loss_init=0.9, p_loss_length=0.25, rng=None)})
-        
+            ,models={"quantum_loss_model":
+            FibreLossModel(p_loss_init=loss_init,p_loss_length=loss_len, rng=None),
+            "delay_model": FibreDelayModel(c=QChV)})
         
         nodeA.connect_to(nodeB, MyQChannel,
             local_port_name =nodeA.ports["portQA_1"].name,
@@ -468,7 +562,10 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         nodeA.connect_to(nodeB, MyCChannel2,
                             local_port_name="portCA_2", remote_port_name="portCB_2")
 
-
+        
+        startTime=ns.sim_time()
+        #print("startTime:",startTime)
+        
         Alice_protocol = AliceProtocol(nodeA,Alice_processor,num_bits)
         Bob_protocol = BobProtocol(nodeB,Bob_processor,num_bits)
         Bob_protocol.start()
@@ -476,67 +573,66 @@ def run_E91_sim(runtimes=1,num_bits=20,fibre_len=10**-9,noise_model=None,
         #ns.logger.setLevel(1)
         stats = ns.sim_run()
         
+        '''
+        endTime=Bob_protocol.endTime
+        #print("endTime:",endTime)
+        MyE91List_A.append(Alice_protocol.key)
+        MyE91List_B.append(Bob_protocol.key)
+        #simple key length calibration
+        s = SequenceMatcher(None, Alice_protocol.key, Bob_protocol.key)# unmatched rate
+        MyKeyRateList.append((len(Bob_protocol.key)*(1-s.ratio()))*10**9/(endTime-startTime)) #second
+        '''
+        
         MyE91List_A.append(Alice_protocol.key)
         MyE91List_B.append(Bob_protocol.key)
         
-    return MyE91List_A, MyE91List_B
+        A_originBasisList.append(Alice_protocol.basisList)
+        B_measureBasisList.append(Bob_protocol.basisList)
+        
+        
+    #return MyE91List_A, MyE91List_B, MyKeyRateList
+
+    return MyE91List_A, MyE91List_B, A_originBasisList, B_measureBasisList
 
 
 
 
 
+# In[7]:
 
 
-# In[66]:
+#test
+#mymemNoiseMmodel=T1T2NoiseModel(T1=11, T2=10)
+#myprocessorNoiseModel=DepolarNoiseModel(depolar_rate=500)
+myProcessNoise=DephaseNoiseModel(dephase_rate=0.004)
 
 
-# key pairs generation
+keyA,keyB,AList,BList=run_E91_sim(runtimes=1,num_bits=5*10**4,fibre_len=40
+        ,memNoiseMmodel=None,processorNoiseModel=myProcessNoise
+        ,loss_init=0.5,loss_len=0.2,QChV=2.083*10**-4) #10**-9
 
-#myErrorModel=DepolarNoiseModel(depolar_rate=50000)
-myErrorModel=T1T2NoiseModel(T1=1100, T2=1000)
-toWrite=run_E91_sim(runtimes=1,num_bits=10**4,fibre_len=10000,noise_model=myErrorModel) #10**-9
-#print(toWrite)
+#print(keyA,"\n",keyB,"\n",AList,"\n",BList)
+
+
+
+keyAPrint=''.join(map(str, keyA[0]))
+keyBPrint=''.join(map(str, keyB[0]))
+
+AListPrint=''.join(map(str, AList[0]))
+BListPrint=''.join(map(str, BList[0]))
+
+
+
 
 listToPrint=''
-listToPrint=str(toWrite)
-print(listToPrint)
-outF = open("keyOutput6.txt", "w")
+listToPrint="A key:\n"+str(keyAPrint)+"\nB key: \n"+str(keyBPrint)+"\n A origin basis: \n"+str(AListPrint)+"\nB random basis:\n"+str(BListPrint)
+
+outF = open("qkd_len_40.txt", "w")
 outF.writelines(listToPrint)
 outF.close()
 
 
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-'''
-filtered_A = filter(lenfilter, toWrite[0]) 
-filtered_B = filter(lenfilter, toWrite[1])    
-
-
-listToPrint=''
-for i,j in zip(filtered_A,filtered_B):
-    listToPrint+='['
-    listToPrint+=str(i)
-    listToPrint+=','
-    listToPrint+=str(j)
-    listToPrint+=']'
-    
-print(listToPrint)
-
-outF = open("keyOutput.txt", "w")
-outF.writelines(listToPrint[1:-1])
-outF.close()
-'''
-
-
-# In[18]:
+# In[7]:
 
 
 # plot function
@@ -545,65 +641,57 @@ import matplotlib.pyplot as plt
 def E91_plot():
     y_axis=[]
     x_axis=[]
-    run_times=20
+    run_times=10
     num_bits=50
-    min_dis=1
-    max_dis=10
+    min_dis=0
+    max_dis=80
     
-    myErrorModel=DepolarNoiseModel(depolar_rate=1000)
+    mymemNoiseMmodel=T1T2NoiseModel(T1=11, T2=10)
+    myprocessorNoiseModel=DepolarNoiseModel(depolar_rate=200)
 
     # first curve
-    for i in range(min_dis,max_dis):
-        key_sum=0.0
-        x_axis.append(i/10)
-        key_list_A,key_list_B=run_E91_sim(run_times,num_bits,i/10
-            ,noise_model=myErrorModel,loss_init=0,loss_len=0.1) 
-        #feed runtimes, numberof bits and distance, use default loss model
-        #print("key_list_A: ",key_list_A)
-        for keyA,keyB in zip(key_list_A,key_list_B):
-            if keyA==keyB and keyA != None:  
-                #print("len keyA:",len(keyA))
-                key_sum+=len(keyA)
-        y_axis.append(key_sum/run_times/num_bits)
+    for i in range(min_dis,max_dis,5):
         
-    plt.plot(x_axis, y_axis, 'go-',label='loss_len=0.2')
+        x_axis.append(i)
+        key_list_A,key_list_B,keyRateList=run_E91_sim(run_times,num_bits,fibre_len=i
+            ,processorNoiseModel=myprocessorNoiseModel,memNoiseMmodel=mymemNoiseMmodel) 
+        
+        y_axis.append(sum(keyRateList)/run_times/10**6)
+        
+        
+        
+    plt.plot(x_axis, y_axis, 'go-',label='depolar_rate=200Hz')
     
-    
+    '''
     y_axis.clear() 
     x_axis.clear()
     
     
+    myprocessorNoiseModel=DepolarNoiseModel(depolar_rate=2000)
     # second curve
-    for i in range(min_dis,max_dis):
-        key_sum=0.0
-        x_axis.append(i/10)
-        key_list_A,key_list_B=run_E91_sim(run_times,num_bits,i/10
-            ,noise_model=myErrorModel,loss_init=0,loss_len=0.9) 
+    for i in range(min_dis,max_dis,5):
         
-        for keyA,keyB in zip(key_list_A,key_list_B):
-            if keyA==keyB and keyA != None: 
-                key_sum+=len(keyA)
-        y_axis.append(key_sum/run_times/num_bits)
+        x_axis.append(i)
+        key_list_A,key_list_B,keyRateList=run_E91_sim(run_times,num_bits,fibre_len=i
+            ,processorNoiseModel=myprocessorNoiseModel,memNoiseMmodel=mymemNoiseMmodel) 
         
-    plt.plot(x_axis, y_axis, 'bo-',label='loss_len=0.4')
+        y_axis.append(sum(keyRateList)/run_times)
+        
+        
+        
+    plt.plot(x_axis, y_axis, 'bo-',label='depolar_rate=2000')
+    '''
     
-    
-    
-    plt.ylabel('average key length/max qubits length')
+    plt.title('QKD E91')
+    plt.ylabel('key rate Mb/s')
     plt.xlabel('fibre lenth (km)')
     
     
     plt.legend()
-    plt.savefig('plot.png')
+    plt.savefig('keyRate8.png')
     plt.show()
 
     
 
 E91_plot()
-
-
-# In[ ]:
-
-
-
 
