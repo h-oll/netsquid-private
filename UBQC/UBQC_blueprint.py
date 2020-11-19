@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[15]:
+# In[1]:
 
 
 import numpy as np
@@ -25,7 +25,7 @@ from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[16]:
+# In[2]:
 
 
 # General functions/Quantum programs
@@ -86,10 +86,8 @@ INSTR_Rv292 = IGate('Z Rotated -292.5',operator=R292.inv)
 INSTR_Rv315 = IGate('Z Rotated -315  ',operator=R315.inv)
 INSTR_Rv337 = IGate('Z Rotated -337.5',operator=R337.inv)
 
-#INSTR_Swap = ISwap()
 
-
-# In[26]:
+# In[3]:
 
 
 # General functions/Quantum programs 
@@ -154,65 +152,65 @@ class AngleMeasure(QuantumProgram):
         #print("self.angleInx",self.angleInx)
         for pos,angle in zip(self.positionInx,self.angleInx):
             if   angle == 1:
-                self.apply(INSTR_R22,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv22,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R22,pos)
             elif angle == 2:
-                self.apply(INSTR_R45,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv45,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R45,pos)
             elif angle == 3:
-                self.apply(INSTR_R67,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv67,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R67,pos)
             elif angle== 4:
-                self.apply(INSTR_R90,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv90,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R90,pos)
             elif angle== 5:
-                self.apply(INSTR_R112,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv112,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R112,pos)
             elif angle== 6:
-                self.apply(INSTR_R135,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv135,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R135,pos)
             elif angle== 7:
-                self.apply(INSTR_R157,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv157,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R157,pos)
             elif angle== 8:
-                self.apply(INSTR_R180,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv180,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R180,pos)
             elif angle== 9:
-                self.apply(INSTR_R202,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv202,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R202,pos)
             elif angle== 10:
-                self.apply(INSTR_R225,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv225,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R225,pos)
             elif angle== 11:
-                self.apply(INSTR_R247,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv247,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R247,pos)
             elif angle== 12:
-                self.apply(INSTR_R270,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv270,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R270,pos)
             elif angle== 13:
-                self.apply(INSTR_R292,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv292,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R292,pos)
             elif angle== 14:
-                self.apply(INSTR_R315,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_Rv315,pos)
-            elif angle== 15:
-                self.apply(INSTR_R337,pos)
                 self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R315,pos)
+            elif angle== 15:
                 self.apply(INSTR_Rv337,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_R337,pos)
             else:  # angle== 0
                 self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
         
@@ -281,7 +279,7 @@ class QCZ(QuantumProgram):
         
 
 
-# In[27]:
+# In[4]:
 
 
 # server protocol
@@ -307,7 +305,7 @@ class ProtocolServer(NodeProtocol):
         
         
         self.S_Source = QSource("S_source") 
-        self.S_Source.ports["qout0"].bind_output_handler(self.store_output_from_port)
+        self.S_Source.ports["qout0"].bind_output_handler(self.S_put_prepareEPR,4)
         self.S_Source.status = SourceStatus.EXTERNAL
         
         self.C_delta1=None
@@ -330,19 +328,14 @@ class ProtocolServer(NodeProtocol):
         clock.start()
         
         
-    def store_output_from_port(self,message):
+    def S_put_prepareEPR(self,message,numQubits=4):
         self.port_output.append(message.items[0])
-        if len(self.port_output)==4:
-            #print("S store qubits:",self.port_output)
+        if len(self.port_output)==numQubits:
             self.processor.put(qubits=self.port_output)
-            
-            # do H CNOT operation
             # PrepareEPRpairs
-            prepareEPRpairs=PrepareEPRpairs(2)
-            
-            
+            prepareEPRpairs=PrepareEPRpairs(int(numQubits/2))
             self.processor.execute_program(
-                prepareEPRpairs,qubit_mapping=[i for  i in range(0, 4)])
+                prepareEPRpairs,qubit_mapping=[i for  i in range(0, numQubits)])
     
     
     def S_sendEPR(self):
@@ -357,114 +350,132 @@ class ProtocolServer(NodeProtocol):
     
     
     def run(self):
-        #print("server on")
-        port = self.node.ports["portCS_1"]
         
-        #receive classical from client
+        ## STEP 0 
+        #S recieved round information
+        #---------------------------------------------------------------------
+        port = self.node.ports["portCS_1"]
         yield self.await_port_input(port)
         rounds = port.rx_input().items
         #print("S received rounds:",rounds)
         
-        # send half of an EPRpair to client
-        
-        # gen 2 qubits
-        self.S_genQubits(4)
-        # EPR pair formed when port received
         
         
+        
+        ## STEP 2,3
+        #S generates four qubits in |0> state.(label 1 to 4)
+        #S makes two EPR pairs: Apply H gate and CNOT gate with 
+        #  qubit label 1 and qubit label 2, same with 3 and 4
+        #---------------------------------------------------------------------
+        self.S_genQubits(4)    # EPR pair formed when port received
         yield self.await_program(processor=self.processor)
-        #print("S1 num_used_positions=",self.processor.num_used_positions)
+        
+        
+        
+        
+        ## STEP 4
+        #S sends two qubits(2 and 4) to C, now the two EPR pairs are shared. 
+        #---------------------------------------------------------------------
         self.S_sendEPR()
         
         
+        
+        ## STEP 6
+        #C sends ACK to S
+        #S receive ACK from C
+        #---------------------------------------------------------------------
         port = self.node.ports["portCS_1"]
-        #receive qubits from client
         yield self.await_port_input(port)
-        #print("S2 num_used_positions=",self.processor.num_used_positions)
         ack=port.rx_input().items[0]
         if ack!='ACK':
             print("ACK ERROR!")
         
-        '''
-        if tmp[0]=="ACK":
-            #print("S ACK received start swaping")
         
-        else:
-            print(tmp[0])
-            print("S ACK NOT received ERROR!!!")
         
-        '''
         
-        #Swap
+        ## STEP 7
+        #S swaps memory position of qubit 1 with qubit 3.
+        #---------------------------------------------------------------------
         myQSwap=QSwap(position=[0,2])
         self.processor.execute_program(myQSwap,qubit_mapping=[0,1,2])
+        self.processor.set_program_fail_callback(self.ProgramFail,once=True)
+        yield self.await_program(processor=self.processor)
         
         
-        #yield self.await_program(processor=self.processor)
-        #print("S myQSwap finished")
         
-        # send ACK
-        
+        ## STEP 8
+        #S sends ACK2 to C.
+        #---------------------------------------------------------------------
         self.node.ports["portCS_2"].tx_output("ACK2")
         
-        # waiting for ACK3
+        
+        
+        ## STEP 10
+        #C sends ACK3 to S.
+        #S receive ACK3 from C
+        #---------------------------------------------------------------------
         port = self.node.ports["portCS_1"]
         yield self.await_port_input(port)
         ack=port.rx_input().items[0]
         if ack!='ACK3':
             print("ACK3 ERROR!")
             
-        #print("S received:",tmp)
-        '''
-        if tmp[0]=="ACK3":
-            print("S ACK3 received start CNOT")
-        else:
-            print(tmp[0])
-            print("S ACK3 NOT received ERROR!!!")
-        '''
+            
+            
         
-        
+        ## STEP 11
+        #S apply CZ with qubits 1 and 3.
+        #---------------------------------------------------------------------
         myQCZ=QCZ(position=[0,2])
         self.processor.execute_program(myQCZ,qubit_mapping=[0,1,2])
         self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         yield self.await_program(processor=self.processor)
-        #print("S QCZ finished")
         
-        #send ACK4
+        
+        
+        ## STEP 12
+        #S sends ACK4 to C.
+        #C receive ACK4 from S
+        #---------------------------------------------------------------------
         self.node.ports["portCS_2"].tx_output("ACK4")
         
         
-        # receiving theta1
+        
+        ## STEP 14
+        #C sends delta1 and delta2 to S
+        #S receive delta1 and delta2
+        #---------------------------------------------------------------------
         port = self.node.ports["portCS_1"]
         yield self.await_port_input(port)
         tmp=port.rx_input().items
         self.C_delta1=tmp[0]
         self.C_delta2=tmp[1]
-        #print("S received self.C_delta1 :",self.C_delta2)
-        
-        # create customized measurement
         
         
-        #yield self.await_program(processor=self.processor,await_fail=True)
-        # S measure by 2 delta
-        myAngleMeasure_m1m2=AngleMeasure([0,2],[self.C_delta1,self.C_delta2]) # first qubit
+        
+        
+        
+        ## STEP 15
+        #S measures the qubit 3 by delta1. 
+        # And measures qubit 1 by delta2, assign results to m1 and m2.
+        #---------------------------------------------------------------------
+        myAngleMeasure_m1m2=AngleMeasure([0,2],[self.C_delta1,self.C_delta2])
         self.processor.execute_program(myAngleMeasure_m1m2,qubit_mapping=[0,1,2])
         self.processor.set_program_done_callback(self.GetPGoutput_m1m2,myAngleMeasure_m1m2,once=True)
         self.processor.set_program_fail_callback(self.ProgramFail,once=True)
-        
         yield self.await_program(processor=self.processor)
-        #print("S self.m1 m2:",self.m1,self.m2)
 
         
         
-        #send m1 m2
+        ## STEP 16
+        #S sends m1 and m2 to C
+        #---------------------------------------------------------------------
         self.node.ports["portCS_2"].tx_output([self.m1,self.m2])
         
         
-        
 
 
-# In[28]:
+# In[5]:
 
 
 # client protocol
@@ -505,7 +516,7 @@ class ProtocolClient(NodeProtocol):
         self.portNameC2=port_names[2]
         self.maxRounds=maxRounds
         self.rounds=rounds
-        self.d=randint(1,2)
+        
         self.z1=None
         self.z2=None
         self.p1=None
@@ -523,20 +534,35 @@ class ProtocolClient(NodeProtocol):
         self.m2=None
         
         self.verified=False
+        
+        # STEP 1
+        self.d=randint(1,2)
     
     def run(self):
         
-        #print("client on")
+        ## STEP 0
+        #C send round infomation 
+        #---------------------------------------------------------------------
         self.node.ports[self.portNameC1].tx_output(self.rounds)
         
-        #receive qubits from client
+        
+        
+        ## STEP 4
+        #C received two qubits from S
+        #---------------------------------------------------------------------
         port = self.node.ports["portQC_1"]
         yield self.await_port_input(port)
-        
         EPRpairs=port.rx_input().items
-        #print("C received qubits:",EPRpairs)
         self.processor.put(EPRpairs)
         
+        
+        
+        
+        ## STEP 5 
+        #C if d value equal to 1, randomly chooses theta2 and r2, 
+        #  measure qubit 2 by theta2, assign result to p2.
+        #  if d value equal to 2, measures qubit 2 in standard basis, assign result to z2.
+        #---------------------------------------------------------------------
         if self.d == 1 :
             #print("C case d=1")
             self.theta2=randint(0,7)
@@ -556,25 +582,32 @@ class ProtocolClient(NodeProtocol):
             # assign z2
             self.processor.set_program_done_callback(self.myGetPGoutput1,myQMeasure,once=True) 
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
-            
-            
         yield self.await_program(processor=self.processor)
         
-        # send ACK
-        #print("C sending  ACK")
+        
+        ## STEP 6
+        #C sends ACK to S.
+        #---------------------------------------------------------------------
         self.node.ports["portCC_1"].tx_output("ACK")
 
-        #print("C waiting for ACK2")
+        
+        ## STEP 8
+        #S sends ACK2 to C
+        #C receive ACK2 from S
+        #---------------------------------------------------------------------
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)   
         ack = port.rx_input().items[0]
-        #print("C received :",tmp)
-        
         if ack!='ACK2':
             print("ACK2 ERROR!")
             
         
-        #measure
+        
+        ## STEP 9
+        #C if d value equal to 1, measures qubit 4 in standard basis, assign result to z1.
+        #  if d value equal to 2, randomly chooses theta1 and r1, 
+        #  measure qubit 4 by theta2, assign result to p1.
+        #---------------------------------------------------------------------
         if self.d==1:
             #print("C case d=1")
             myQMeasure=QMeasure([0]) 
@@ -590,26 +623,39 @@ class ProtocolClient(NodeProtocol):
             self.processor.execute_program(myAngleMeasure,qubit_mapping=[0,1])
             self.processor.set_program_done_callback(self.myGetPGoutput2,myAngleMeasure,once=True)
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
-            
-        
         yield self.await_program(processor=self.processor)
         
-        # send ACK
-        #print("C sending  ACK3")
+        
+        
+        
+        
+        ## STEP 10
+        #C sends ACK3 to S.
+        #S receive ACK3 from C
+        #---------------------------------------------------------------------
         self.node.ports["portCC_1"].tx_output("ACK3")
         
-        # wait ACK4
-        #print("C waiting for ACK4")
+        
+        
+        
+        ## STEP 12
+        #S sends ACK4 to C.
+        #C receive ACK4 from S
+        #---------------------------------------------------------------------
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)
         ack = port.rx_input().items[0]
-        
         if ack!='ACK4':
             print("ACK4 ERROR!")
-            #print("C received :",ack)
         
-        # send theta1
-
+        
+        
+        
+        
+        # STEP 13
+        #C if d value equal to 1, randomly chooses delta1, assign delta2=theta2+(p2+r2)*pi.
+        #  if d value equal to 2, randomly chooses delta2, assign delta1=theta1+(p1+r1)*pi.
+        #---------------------------------------------------------------------
         if self.d==1:
             self.delta1=randint(0,7)                      # scale x8 ; 1 = 22.5 degree
             self.delta2=self.theta2+(self.p2+self.r2)*8
@@ -618,52 +664,62 @@ class ProtocolClient(NodeProtocol):
             self.delta1=self.theta1+(self.p1+self.r1)*8
             self.delta2=randint(0,7)
             
-        
         self.delta1%=16
         self.delta2%=16
         #print("C delta1 delta2:",self.delta1,self.delta2)
         
-        # send delta
+        
+        
+        
+        
+        # STEP 14
+        #C sends delta1 and delta2 to S.
+        #---------------------------------------------------------------------
         self.node.ports["portCC_1"].tx_output([self.delta1,self.delta2])
         
         
-        # receive measurement result
+        
+        
+        # STEP 16
+        #S sends m1 and m2 to C
+        #C receive measurement results m1, m2 from S
+        #---------------------------------------------------------------------
         port = self.node.ports["portCC_2"]
         yield self.await_port_input(port)
         measRes = port.rx_input().items
-        #print("C received measurement results: ",measRes)
         self.m1=measRes[0]
         self.m2=measRes[1]
-        #print("C received measurement:",self.m1,self.m2)
         
+        
+        
+        
+        # STEP 17
+        #C if d value equal to 1, and (z1+r2)%2=m2, than verification passed.
+        #  if d value equal to 2, and (z2+r1)%2=m1, than verification passed.
+        #  else Not verified.
+        #---------------------------------------------------------------------
         if self.d==1:
-            #print("C d==1 case")
             if (self.z1+self.r2)%2== self.m2:
-                #print("Varified!")
                 self.verified=True
-                #print("z1,r2,m2:",self.z1,self.r2,self.m2)
             else:
-                #print("Failed!")
                 self.verified=False
-                #print("z1,r2,m2:",self.z1,self.r2,self.m2)
-        else: # d==2
-            #print("C d==2 case")
+            #print("z1,r2,m2:",self.z1,self.r2,self.m2)
+        else: # d==2 case 
             if (self.z2+self.r1)%2== self.m1:
-                #print("Varified!")
                 self.verified=True
-                #print("z2,r1,m1:",self.z2,self.r1,self.m1)
             else:
-                #print("Failed!")
                 self.verified=False
-                #print("z2,r1,m1:",self.z2,self.r1,self.m1)
+            #print("z2,r1,m1:",self.z2,self.r1,self.m1)
+            
+            
 
 
-# In[29]:
+# In[7]:
 
 
 # implementation & hardware configure
 def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMmodel=None
-               ,loss_init=0.25,loss_len=0.2):
+               ,loss_init=0.25,loss_len=0.2,QChV=3*10**2,CChV=3*10**2):
     
     resList=[]
     successCount=0
@@ -685,9 +741,9 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
             PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=processorNoiseModel),
-            PhysicalInstruction(INSTR_CZ,duration=1,q_noise_model=processorNoiseModel),
-            PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_CZ,duration=10,q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_MEASURE, duration=10, parallel=True),
+            PhysicalInstruction(INSTR_MEASURE_X, duration=10, parallel=True),
             PhysicalInstruction(INSTR_R22, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R45, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R67, duration=1, parallel=True),
@@ -729,9 +785,9 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
             PhysicalInstruction(INSTR_X, duration=1, q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_Z, duration=1, q_noise_model=processorNoiseModel),
             PhysicalInstruction(INSTR_H, duration=1, q_noise_model=processorNoiseModel),
-            PhysicalInstruction(INSTR_CNOT,duration=1,q_noise_model=processorNoiseModel),
-            PhysicalInstruction(INSTR_MEASURE, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_MEASURE_X, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_CNOT,duration=10,q_noise_model=processorNoiseModel),
+            PhysicalInstruction(INSTR_MEASURE, duration=10, parallel=True),
+            PhysicalInstruction(INSTR_MEASURE_X, duration=10, parallel=True),
             PhysicalInstruction(INSTR_R22, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R45, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R67, duration=1, parallel=True),
@@ -753,7 +809,10 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
         
         MyQChannel=QuantumChannel("QChannel_S->C",delay=0
             ,length=fibre_len
-            ,models={"myFibreLossModel": FibreLossModel(p_loss_init=loss_init, p_loss_length=loss_len, rng=None)})
+            ,models={"quantum_loss_model": FibreLossModel(p_loss_init=loss_init, p_loss_length=loss_len, rng=None)
+            ,"delay_model": FibreDelayModel(c=QChV)})
+        
+        
         
         
         nodeServer.connect_to(nodeClient, MyQChannel,
@@ -790,11 +849,11 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
     return successCount/len(resList)
 
 
-# In[30]:
+# In[8]:
 
 
 # test
-run_UBQC_sim(runtimes=3000,fibre_len=0
+run_UBQC_sim(runtimes=100,fibre_len=0
     ,processorNoiseModel=None,memNoiseMmodel=None,loss_init=0,loss_len=0)
 
 
@@ -840,10 +899,4 @@ def UBQC_plot():
 
 
 UBQC_plot()
-
-
-# In[ ]:
-
-
-
 
