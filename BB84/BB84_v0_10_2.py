@@ -3,7 +3,7 @@ import numpy as np
 import netsquid.components.instructions as instr
 from netsquid.nodes import Node, Network, DirectConnection
 from netsquid.components import QuantumChannel, QuantumProgram, ClassicalChannel, FibreDelayModel
-from netsquid.protocols import NodeProtocol
+from netsquid.protocols import NodeProtocol, Signals
 from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
 
 
@@ -34,13 +34,13 @@ class KeyReceiverProtocol(NodeProtocol):
     Protocol for the receiver of the key.
     """
 
-    def __init__(self, node, key_size=10, port_names=("portQB_1", "portCB_1", "portCB_2")):
+    def __init__(self, node, key_size=10, port_names=("qubitIO", "classicIO")):
         super().__init__(node)
         self.node = node
         self.q_port = port_names[0]
-        self.c_port_i = port_names[1]
-        self.c_port_o = port_names[2]
+        self.c_port = port_names[1]
         self.key_size = key_size
+        self.key = None
 
     def run(self):
         # Select random bases
@@ -61,18 +61,19 @@ class KeyReceiverProtocol(NodeProtocol):
 
             # Send ACK to Alice to trigger next qubit send (except in last transmit)
             if i < self.key_size - 1:
-                self.node.ports[self.c_port_o].tx_output('ACK')
+                self.node.ports[self.c_port].tx_output('ACK')
 
         # All qubits arrived, send bases
-        self.node.ports[self.c_port_o].tx_output(bases)
+        self.node.ports[self.c_port].tx_output(bases)
 
         # Await matched indices from Alice and process key
-        yield self.await_port_input(self.node.ports[self.c_port_i])
-        matched_indices = self.node.ports[self.c_port_i].rx_input().items
+        yield self.await_port_input(self.node.ports[self.c_port])
+        matched_indices = self.node.ports[self.c_port].rx_input().items
         final_key = []
         for i in matched_indices:
             final_key.append(results[i])
-        print('Bob\'s key', final_key)
+        self.key = final_key
+        self.send_signal(signal_label=Signals.SUCCESS, result=final_key)
 
 
 class KeySenderProtocol(NodeProtocol):
@@ -80,13 +81,13 @@ class KeySenderProtocol(NodeProtocol):
     Protocol for the sender of the key.
     """
 
-    def __init__(self, node, key_size=10, port_names=("portQA_1", "portCA_1", "portCA_2")):
+    def __init__(self, node, key_size=10, port_names=("qubitIO", "classicIO")):
         super().__init__(node)
         self.node = node
         self.q_port = port_names[0]
-        self.c_port_o = port_names[1]
-        self.c_port_i = port_names[2]
+        self.c_port = port_names[1]
         self.key_size = key_size
+        self.key = None
 
     def run(self):
         secret_key = np.random.randint(2, size=self.key_size)
@@ -100,21 +101,22 @@ class KeySenderProtocol(NodeProtocol):
             q = self.node.qmemory.pop(0)
             self.node.ports[self.q_port].tx_output(q)
             if i < self.key_size - 1:
-                yield self.await_port_input(self.node.ports[self.c_port_i])
+                yield self.await_port_input(self.node.ports[self.c_port])
 
         # Await response from Bob
-        yield self.await_port_input(self.node.ports[self.c_port_i])
-        bob_bases = self.node.ports[self.c_port_i].rx_input().items[0]
+        yield self.await_port_input(self.node.ports[self.c_port])
+        bob_bases = self.node.ports[self.c_port].rx_input().items[0]
         matched_indices = []
         for i in range(self.key_size):
             if bob_bases[i] == bases[i]:
                 matched_indices.append(i)
 
-        self.node.ports[self.c_port_o].tx_output(matched_indices)
+        self.node.ports[self.c_port].tx_output(matched_indices)
         final_key = []
         for i in matched_indices:
             final_key.append(secret_key[i])
-        print('Alice\'s key', final_key)
+        self.key = final_key
+        self.send_signal(signal_label=Signals.SUCCESS, result=final_key)
 
 
 def create_processor():
@@ -141,46 +143,29 @@ def generate_network():
     Generate the network. For BB84, we need a quantum and classical channel.
     """
 
-    q_chan = QuantumChannel(name="AqB",
-                            length=1,
-                            models={"delay_model": FibreDelayModel()})
-
-    c_chan_ab = ClassicalChannel(name="AcB",
-                                 length=1,
-                                 models={"delay_model": FibreDelayModel()})
-    c_chan_ba = ClassicalChannel(name="BcA",
-                                 length=1,
-                                 models={"delay_model": FibreDelayModel()})
-
     network = Network("BB84 Network")
     alice = Node("alice", qmemory=create_processor())
     bob = Node("bob", qmemory=create_processor())
 
     network.add_nodes([alice, bob])
-    _, p_ba = network.add_connection(alice,
-                                     bob,
-                                     label="q_chan",
-                                     connection=DirectConnection(name="q_conn[A|B]",
-                                                                 channel_AtoB=q_chan),
-                                     port_name_node1="portQA_1",
-                                     port_name_node2="portQB_1")
+    p_ab, p_ba = network.add_connection(alice,
+                                        bob,
+                                        label="q_chan",
+                                        channel_to=QuantumChannel('AqB', delay=10),
+                                        channel_from=QuantumChannel('BqA', delay=10),
+                                        port_name_node1="qubitIO",
+                                        port_name_node2="qubitIO")
     # Map the qubit input port from the above channel to the memory index 0 on Bob"s
     # side
+    alice.ports[p_ab].forward_input(alice.qmemory.ports["qin0"])
     bob.ports[p_ba].forward_input(bob.qmemory.ports["qin0"])
     network.add_connection(alice,
                            bob,
                            label="c_chan",
-                           connection=DirectConnection(name="c_conn[A|B]",
-                                                       channel_AtoB=c_chan_ab),
-                           port_name_node1="portCA_1",
-                           port_name_node2="portCB_1")
-    network.add_connection(bob,
-                           alice,
-                           label="c_chan2",
-                           connection=DirectConnection(name="c_conn[B|A]",
-                                                       channel_AtoB=c_chan_ba),
-                           port_name_node1="portCB_2",
-                           port_name_node2="portCA_2")
+                           channel_to=ClassicalChannel('AcB', delay=10),
+                           channel_from=ClassicalChannel('BcA', delay=10),
+                           port_name_node1="classicIO",
+                           port_name_node2="classicIO")
     return network
 
 
@@ -196,4 +181,3 @@ if __name__ == '__main__':
     p2.start()
 
     stats = ns.sim_run()
-
