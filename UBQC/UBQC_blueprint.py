@@ -34,21 +34,21 @@ from random import randint
 theta = np.pi/8
 # 16 types of rotations
 # R0
-R22 =create_rotation_op(   theta/2, rotation_axis=(0, 0, 1))
-R45 =create_rotation_op( 2*theta/2, rotation_axis=(0, 0, 1))
-R67 =create_rotation_op( 3*theta/2, rotation_axis=(0, 0, 1))
-R90 =create_rotation_op( 4*theta/2, rotation_axis=(0, 0, 1))
-R112=create_rotation_op( 5*theta/2, rotation_axis=(0, 0, 1))
-R135=create_rotation_op( 6*theta/2, rotation_axis=(0, 0, 1))
-R157=create_rotation_op( 7*theta/2, rotation_axis=(0, 0, 1))
-R180=create_rotation_op(   np.pi/2, rotation_axis=(0, 0, 1))
-R202=create_rotation_op( 9*theta/2, rotation_axis=(0, 0, 1))
-R225=create_rotation_op(10*theta/2, rotation_axis=(0, 0, 1))
-R247=create_rotation_op(11*theta/2, rotation_axis=(0, 0, 1))
-R270=create_rotation_op(12*theta/2, rotation_axis=(0, 0, 1))
-R292=create_rotation_op(13*theta/2, rotation_axis=(0, 0, 1))
-R315=create_rotation_op(14*theta/2, rotation_axis=(0, 0, 1))
-R337=create_rotation_op(15*theta/2, rotation_axis=(0, 0, 1))
+R22 =create_rotation_op(   theta, rotation_axis=(0, 0, 1))
+R45 =create_rotation_op( 2*theta, rotation_axis=(0, 0, 1))
+R67 =create_rotation_op( 3*theta, rotation_axis=(0, 0, 1))
+R90 =create_rotation_op( 4*theta, rotation_axis=(0, 0, 1))
+R112=create_rotation_op( 5*theta, rotation_axis=(0, 0, 1))
+R135=create_rotation_op( 6*theta, rotation_axis=(0, 0, 1))
+R157=create_rotation_op( 7*theta, rotation_axis=(0, 0, 1))
+R180=create_rotation_op(   np.pi, rotation_axis=(0, 0, 1))
+R202=create_rotation_op( 9*theta, rotation_axis=(0, 0, 1))
+R225=create_rotation_op(10*theta, rotation_axis=(0, 0, 1))
+R247=create_rotation_op(11*theta, rotation_axis=(0, 0, 1))
+R270=create_rotation_op(12*theta, rotation_axis=(0, 0, 1))
+R292=create_rotation_op(13*theta, rotation_axis=(0, 0, 1))
+R315=create_rotation_op(14*theta, rotation_axis=(0, 0, 1))
+R337=create_rotation_op(15*theta, rotation_axis=(0, 0, 1))
 
 #============================================================
 
@@ -152,65 +152,65 @@ class AngleMeasure(QuantumProgram):
         #print("self.angleInx",self.angleInx)
         for pos,angle in zip(self.positionInx,self.angleInx):
             if   angle == 1:
-                self.apply(INSTR_Rv22,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R22,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv22,pos)
             elif angle == 2:
-                self.apply(INSTR_Rv45,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R45,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv45,pos)
             elif angle == 3:
-                self.apply(INSTR_Rv67,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R67,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv67,pos)
             elif angle== 4:
-                self.apply(INSTR_Rv90,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R90,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv90,pos)
             elif angle== 5:
-                self.apply(INSTR_Rv112,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R112,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv112,pos)
             elif angle== 6:
-                self.apply(INSTR_Rv135,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R135,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv135,pos)
             elif angle== 7:
-                self.apply(INSTR_Rv157,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R157,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv157,pos)
             elif angle== 8:
-                self.apply(INSTR_Rv180,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R180,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv180,pos)
             elif angle== 9:
-                self.apply(INSTR_Rv202,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R202,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv202,pos)
             elif angle== 10:
-                self.apply(INSTR_Rv225,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R225,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv225,pos)
             elif angle== 11:
-                self.apply(INSTR_Rv247,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R247,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv247,pos)
             elif angle== 12:
-                self.apply(INSTR_Rv270,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R270,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv270,pos)
             elif angle== 13:
-                self.apply(INSTR_Rv292,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R292,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv292,pos)
             elif angle== 14:
-                self.apply(INSTR_Rv315,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
                 self.apply(INSTR_R315,pos)
-            elif angle== 15:
-                self.apply(INSTR_Rv337,pos)
                 self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv315,pos)
+            elif angle== 15:
                 self.apply(INSTR_R337,pos)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_Rv337,pos)
             else:  # angle== 0
                 self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
         
@@ -659,13 +659,11 @@ class ProtocolClient(NodeProtocol):
         if self.d==1:
             self.delta1=randint(0,7)                      # scale x8 ; 1 = 22.5 degree
             self.delta2=self.theta2+(self.p2+self.r2)*8
-            
+            self.delta2%=16
         else:    
             self.delta1=self.theta1+(self.p1+self.r1)*8
+            self.delta1%=16
             self.delta2=randint(0,7)
-            
-        self.delta1%=16
-        self.delta2%=16
         #print("C delta1 delta2:",self.delta1,self.delta2)
         
         
@@ -714,7 +712,7 @@ class ProtocolClient(NodeProtocol):
             
 
 
-# In[7]:
+# In[6]:
 
 
 # implementation & hardware configure
@@ -853,7 +851,7 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
 
 
 # test
-run_UBQC_sim(runtimes=100,fibre_len=0
+run_UBQC_sim(runtimes=1000,fibre_len=0
     ,processorNoiseModel=None,memNoiseMmodel=None,loss_init=0,loss_len=0)
 
 
