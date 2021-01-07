@@ -87,7 +87,7 @@ INSTR_Rv315 = IGate('Z Rotated -315  ',operator=R315.inv)
 INSTR_Rv337 = IGate('Z Rotated -337.5',operator=R337.inv)
 
 
-# In[3]:
+# In[27]:
 
 
 # General functions/Quantum programs 
@@ -147,72 +147,76 @@ class AngleMeasure(QuantumProgram):
         super().__init__()
 
     def program(self):
+        
+        
         #print("in AngleMeasure")
         #print("self.positionInx",self.positionInx)
         #print("self.angleInx",self.angleInx)
         for pos,angle in zip(self.positionInx,self.angleInx):
+            while angle<0:
+                angle+=16
             if   angle == 1:
                 self.apply(INSTR_Rv22,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R22,pos)
             elif angle == 2:
                 self.apply(INSTR_Rv45,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R45,pos)
             elif angle == 3:
                 self.apply(INSTR_Rv67,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R67,pos)
             elif angle== 4:
                 self.apply(INSTR_Rv90,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R90,pos)
             elif angle== 5:
                 self.apply(INSTR_Rv112,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R112,pos)
             elif angle== 6:
                 self.apply(INSTR_Rv135,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R135,pos)
             elif angle== 7:
                 self.apply(INSTR_Rv157,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R157,pos)
             elif angle== 8:
                 self.apply(INSTR_Rv180,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R180,pos)
             elif angle== 9:
                 self.apply(INSTR_Rv202,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R202,pos)
             elif angle== 10:
                 self.apply(INSTR_Rv225,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R225,pos)
             elif angle== 11:
                 self.apply(INSTR_Rv247,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R247,pos)
             elif angle== 12:
                 self.apply(INSTR_Rv270,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R270,pos)
             elif angle== 13:
                 self.apply(INSTR_Rv292,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R292,pos)
             elif angle== 14:
                 self.apply(INSTR_Rv315,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R315,pos)
             elif angle== 15:
                 self.apply(INSTR_Rv337,pos)
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
                 self.apply(INSTR_R337,pos)
             else:  # angle== 0
-                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=pos,physical=True)
+                self.apply(INSTR_MEASURE_X,qubit_indices=pos, output_key=str(pos),physical=True)
         
         
         yield self.run(parallel=False)
@@ -279,7 +283,7 @@ class QCZ(QuantumProgram):
         
 
 
-# In[4]:
+# In[51]:
 
 
 # server protocol
@@ -390,9 +394,17 @@ class ProtocolServer(NodeProtocol):
         if ack!='ACK':
             print("ACK ERROR!")
         
+        # debug
+        '''
+        tmp1=self.processor.pop(2)[0]
+        tmp2=self.processor.pop(0)[0]
+        print("S qubit3:\n",tmp1.qstate.dm)
+        print("S qubit1:\n",tmp2.qstate.dm)
+        '''
+        #self.processor.put([tmp1,tmp2],positions=[0,1])
         
         
-        
+        #!!
         ## STEP 7
         #S swaps memory position of qubit 1 with qubit 3.
         #---------------------------------------------------------------------
@@ -419,17 +431,20 @@ class ProtocolServer(NodeProtocol):
         ack=port.rx_input().items[0]
         if ack!='ACK3':
             print("ACK3 ERROR!")
-            
-            
-            
+        
+        
+        
+        
         
         ## STEP 11
-        #S apply CZ with qubits 1 and 3.
+        #S apply Control-Z with qubits 1 and 3.
         #---------------------------------------------------------------------
         myQCZ=QCZ(position=[0,2])
         self.processor.execute_program(myQCZ,qubit_mapping=[0,1,2])
         self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         yield self.await_program(processor=self.processor)
+        
+        
         
         
         
@@ -461,11 +476,13 @@ class ProtocolServer(NodeProtocol):
         #---------------------------------------------------------------------
         myAngleMeasure_m1m2=AngleMeasure([0,2],[self.C_delta1,self.C_delta2])
         self.processor.execute_program(myAngleMeasure_m1m2,qubit_mapping=[0,1,2])
-        self.processor.set_program_done_callback(self.GetPGoutput_m1m2,myAngleMeasure_m1m2,once=True)
+        #self.processor.set_program_done_callback(self.GetPGoutput_m1m2,myAngleMeasure_m1m2,once=True)
         self.processor.set_program_fail_callback(self.ProgramFail,once=True)
         yield self.await_program(processor=self.processor)
 
-        
+        self.m1 = myAngleMeasure_m1m2.output['0'][0]
+        self.m2 = myAngleMeasure_m1m2.output['2'][0]
+
         
         ## STEP 16
         #S sends m1 and m2 to C
@@ -475,7 +492,7 @@ class ProtocolServer(NodeProtocol):
         
 
 
-# In[5]:
+# In[52]:
 
 
 # client protocol
@@ -537,6 +554,7 @@ class ProtocolClient(NodeProtocol):
         
         # STEP 1
         self.d=randint(1,2)
+        #print("C d: ",self.d)
     
     def run(self):
         
@@ -560,29 +578,37 @@ class ProtocolClient(NodeProtocol):
         
         ## STEP 5 
         #C if d value equal to 1, randomly chooses theta2 and r2, 
-        #  measure qubit 2 by theta2, assign result to p2.
+        #      measure qubit 2 by theta2, assign result to p2.
         #  if d value equal to 2, measures qubit 2 in standard basis, assign result to z2.
-        #---------------------------------------------------------------------
+        #---------------------------------------------------------------------!!
         if self.d == 1 :
             #print("C case d=1")
             self.theta2=randint(0,7)
             self.r2=randint(0,1)
-            # measure by theta2
-            myAngleMeasure=AngleMeasure([0],[self.theta2]) # first qubit
+            # measured by theta2
+            myAngleMeasure=AngleMeasure([0],[self.theta2])
             self.processor.execute_program(myAngleMeasure,qubit_mapping=[0])
-            # assign p2
-            self.processor.set_program_done_callback(self.myGetPGoutput1,myAngleMeasure,once=True)
+            #self.processor.set_program_done_callback(self.myGetPGoutput1,myAngleMeasure,once=True) # assign to p2
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
-            
-        else:
+            yield self.await_program(processor=self.processor)
+        
+            self.p2 = myAngleMeasure.output['0'][0]
+        
+        
+        else:  # C case d=2
             # measure the only qubit in Z basis
             #print("C case d=2")
-            myQMeasure=QMeasure([0]) 
+            myQMeasure=QMeasure([0])
             self.processor.execute_program(myQMeasure,qubit_mapping=[0])
-            # assign z2
-            self.processor.set_program_done_callback(self.myGetPGoutput1,myQMeasure,once=True) 
+            #self.processor.set_program_done_callback(self.myGetPGoutput1,myQMeasure,once=True) # assign z2
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
-        yield self.await_program(processor=self.processor)
+            
+            yield self.await_program(processor=self.processor)
+            self.z2 = myQMeasure.output['0'][0]
+        
+        
+        #print("C theta2: ",self.theta2)
+        #print("C p2, z2: ",self.p2,self.z2)
         
         
         ## STEP 6
@@ -712,7 +738,7 @@ class ProtocolClient(NodeProtocol):
             
 
 
-# In[8]:
+# In[53]:
 
 
 # implementation & hardware configure
@@ -721,6 +747,8 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
     
     resList=[]
     successCount=0
+    set_qstate_formalism(QFormalism.DM)
+    
     
     for i in range(runtimes): 
         
@@ -793,13 +821,31 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
             PhysicalInstruction(INSTR_R112, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R135, duration=1, parallel=True),
             PhysicalInstruction(INSTR_R157, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R180, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R202, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R225, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R247, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R270, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R292, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R315, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_R337, duration=1, parallel=True),
+                
+                
             PhysicalInstruction(INSTR_Rv22, duration=1, parallel=True),
             PhysicalInstruction(INSTR_Rv45, duration=1, parallel=True),
             PhysicalInstruction(INSTR_Rv67, duration=1, parallel=True),
             PhysicalInstruction(INSTR_Rv90, duration=1, parallel=True),
             PhysicalInstruction(INSTR_Rv112, duration=1, parallel=True),
             PhysicalInstruction(INSTR_Rv135, duration=1, parallel=True),
-            PhysicalInstruction(INSTR_Rv157, duration=1, parallel=True)])
+            PhysicalInstruction(INSTR_Rv157, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv180, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv202, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv225, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv247, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv270, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv292, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv315, duration=1, parallel=True),
+            PhysicalInstruction(INSTR_Rv337, duration=1, parallel=True)])
 
 
         # channels==================================================================
@@ -849,15 +895,15 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
     return successCount/runtimes
 
 
-# In[9]:
+# In[69]:
 
 
 # test
-run_UBQC_sim(runtimes=1000,fibre_len=0
+run_UBQC_sim(runtimes=1,fibre_len=10**-9
     ,processorNoiseModel=None,memNoiseMmodel=None,loss_init=0,loss_len=0)
 
 
-# In[54]:
+# In[8]:
 
 
 # plot function
@@ -899,4 +945,10 @@ def UBQC_plot():
 
 
 UBQC_plot()
+
+
+# In[ ]:
+
+
+
 
