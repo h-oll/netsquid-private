@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[15]:
 
 
 import numpy as np
@@ -25,7 +25,7 @@ from netsquid.qubits.qformalism import *
 from random import randint
 
 
-# In[2]:
+# In[16]:
 
 
 # General functions/Quantum programs
@@ -87,7 +87,7 @@ INSTR_Rv315 = IGate('Z Rotated -315  ',operator=R315.inv)
 INSTR_Rv337 = IGate('Z Rotated -337.5',operator=R337.inv)
 
 
-# In[27]:
+# In[17]:
 
 
 # General functions/Quantum programs 
@@ -221,28 +221,6 @@ class AngleMeasure(QuantumProgram):
         
         yield self.run(parallel=False)
         
-'''
-input:
-    Pg: A quantum program (QuantumProgram)
-output:
-    resList: A list of outputs from the given quantum program, 
-    also sorted by key.(list of int)
-'''
-
-def getPGoutput(Pg):
-    resList=[]
-    tempDict=Pg.output
-    if "last" in tempDict:
-        del tempDict["last"]
-
-    # sort base on key
-    newDict=sorted({int(k) : v for k, v in tempDict.items()}.items())
-    
-    #take value
-    for k, v in newDict:
-        resList.append(v[0])
-        #print("k,v: ",k,v[0])
-    return resList
 
 
 '''
@@ -283,18 +261,12 @@ class QCZ(QuantumProgram):
         
 
 
-# In[51]:
+# In[18]:
 
 
 # server protocol
 class ProtocolServer(NodeProtocol):
 
-    def GetPGoutput_m1m2(self,QG):
-        #print("S GetPGoutput_m1m2")
-        tmp=getPGoutput(QG)
-        #print("tmp:",tmp)
-        self.m1=tmp[0]
-        self.m2=tmp[1]
     
     def __init__(self,node,processor,port_names=["portQS_1","portCS_1","portCS_2"],realRound=5):
         super().__init__()
@@ -492,32 +464,12 @@ class ProtocolServer(NodeProtocol):
         
 
 
-# In[52]:
+# In[19]:
 
 
 # client protocol
 class ProtocolClient(NodeProtocol):
     
-    def myGetPGoutput1(self,QG):
-        if self.d == 2 :
-            self.z2 = getPGoutput(QG)[0]
-            #print("C self.z2=",self.z2)
-        elif self.d == 1 :
-            self.p2 = getPGoutput(QG)[0]
-            #print("C self.p2=",self.p2)
-        else:
-            print("error")
-            
-    def myGetPGoutput2(self,QG):
-        if self.d == 2 :
-            self.p1 = getPGoutput(QG)[0]
-            #print("C self.p1=",self.p1)
-        elif self.d == 1 :
-            self.z1 = getPGoutput(QG)[0]
-            #print("C self.z1=",self.z1)
-        else:
-            print("error")
-            
     
             
     def ProgramFail(self):
@@ -638,8 +590,12 @@ class ProtocolClient(NodeProtocol):
             #print("C case d=1")
             myQMeasure=QMeasure([0]) 
             self.processor.execute_program(myQMeasure,qubit_mapping=[0,1])
-            self.processor.set_program_done_callback(self.myGetPGoutput2,myQMeasure,once=True) #not working
+            #self.processor.set_program_done_callback(self.myGetPGoutput2,myQMeasure,once=True) #not working
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
+            
+            yield self.await_program(processor=self.processor)
+            self.z1 = myQMeasure.output['0'][0]
+            
         else:
             #print("C case d=2")
             self.theta1=randint(0,7)
@@ -647,10 +603,11 @@ class ProtocolClient(NodeProtocol):
             # measure by theta1
             myAngleMeasure=AngleMeasure([1],[self.theta1]) # first qubit
             self.processor.execute_program(myAngleMeasure,qubit_mapping=[0,1])
-            self.processor.set_program_done_callback(self.myGetPGoutput2,myAngleMeasure,once=True)
+            #self.processor.set_program_done_callback(self.myGetPGoutput2,myAngleMeasure,once=True)
             self.processor.set_program_fail_callback(self.ProgramFail,once=True)
-        yield self.await_program(processor=self.processor)
-        
+            
+            yield self.await_program(processor=self.processor)
+            self.p1 = myAngleMeasure.output['1'][0]
         
         
         
@@ -738,7 +695,7 @@ class ProtocolClient(NodeProtocol):
             
 
 
-# In[53]:
+# In[20]:
 
 
 # implementation & hardware configure
@@ -895,7 +852,7 @@ def run_UBQC_sim(runtimes=1,fibre_len=10**-9,processorNoiseModel=None,memNoiseMm
     return successCount/runtimes
 
 
-# In[69]:
+# In[21]:
 
 
 # test
