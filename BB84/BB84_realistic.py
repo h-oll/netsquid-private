@@ -148,7 +148,7 @@ class KeySenderProtocol(NodeProtocol):
         self.send_signal(signal_label=Signals.SUCCESS, result=final_key)
 
 
-def create_processor(dephase_rate, t_times, memory_size, add_qsource=False):
+def create_processor(dephase_rate, t_times, memory_size, add_qsource=False, q_source_probs=[1., 0.]):
     """Factory to create a quantum processor for each end node.
 
     Has three memory positions and the physical instructions necessary
@@ -170,8 +170,7 @@ def create_processor(dephase_rate, t_times, memory_size, add_qsource=False):
         PhysicalInstruction(instr.INSTR_X,
                             duration=1,
                             parallel=False,
-                            q_noise_model=gate_noise_model
-                            ),
+                            q_noise_model=gate_noise_model),
         PhysicalInstruction(instr.INSTR_Z,
                             duration=1,
                             parallel=False,
@@ -191,7 +190,7 @@ def create_processor(dephase_rate, t_times, memory_size, add_qsource=False):
                                  phys_instructions=physical_instructions)
     if add_qsource:
         qubit_source = QSource('qubit_source',
-                               StateSampler([ks.s0, ks.s1], [1, 0]),
+                               StateSampler([ks.s0, ks.s1], q_source_probs),
                                num_ports=1,
                                status=SourceStatus.OFF)
         processor.add_subcomponent(qubit_source,
@@ -215,12 +214,14 @@ class QubitConnection(Connection):
                               forward_input=[('A', 'send')])
 
 
-def generate_network(node_distance=1e3, dephase_rate=0.2, key_size=15, t_time={'T1': 11, 'T2': 10}):
+def generate_network(node_distance=1e3, dephase_rate=0.2, key_size=15, t_time={'T1': 11, 'T2': 10},
+                     q_source_probs=[1., 0.]):
     """
     Generate the network. For BB84, we need a quantum and classical channel.
     """
     network = Network("BB84 Network")
-    alice = Node("alice", qmemory=create_processor(dephase_rate, t_time, key_size, add_qsource=True))
+    alice = Node("alice", qmemory=create_processor(dephase_rate, t_time, key_size, add_qsource=True,
+                                                   q_source_probs=q_source_probs))
     bob = Node("bob", qmemory=create_processor(dephase_rate, t_time, key_size))
     network.add_nodes([alice, bob])
     q_conn = QubitConnection(length=node_distance, dephase_rate=dephase_rate)
@@ -240,13 +241,13 @@ def generate_network(node_distance=1e3, dephase_rate=0.2, key_size=15, t_time={'
     return network
 
 
-def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100):
+def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, q_source_probs=[1., 0.]):
     if t_time is None:
         t_time = {'T1': 10001, 'T2': 10000}
 
     for _ in range(runs):
         ns.sim_reset()
-        n = generate_network(fibre_length, dephase_rate, key_size, t_time)
+        n = generate_network(fibre_length, dephase_rate, key_size, t_time, q_source_probs)
         node_a = n.get_node("alice")
         node_b = n.get_node("bob")
         p1 = KeySenderProtocol(node_a, key_size=key_size)
@@ -283,4 +284,5 @@ if __name__ == '__main__':
                          dephase_rate=0,
                          key_size=10,
                          runs=100,
-                         t_time={'T1': 1000, 'T2': 999}))
+                         t_time={'T1': 1000, 'T2': 999},
+                         q_source_probs=[1., 0.]))
