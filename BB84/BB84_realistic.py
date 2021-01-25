@@ -2,12 +2,13 @@ import netsquid as ns
 import netsquid.components.instructions as instr
 import numpy as np
 from netsquid.components import QuantumChannel, QuantumProgram, ClassicalChannel, FibreDelayModel, DephaseNoiseModel, \
-    T1T2NoiseModel, QSource, SourceStatus
+    T1T2NoiseModel, QSource, SourceStatus, FibreLossModel
 from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
 from netsquid.nodes import Node, Network, Connection
 from netsquid.protocols import NodeProtocol, Signals
 from netsquid.qubits import StateSampler
 import netsquid.qubits.ketstates as ks
+import matplotlib.pyplot as plt
 
 bob_keys = []
 alice_keys = []
@@ -81,7 +82,7 @@ class KeyReceiverProtocol(NodeProtocol):
             # Await a qubit from Alice
             self.node.ports[self.q_port].forward_input(self.node.qmemory.ports[f"qin{i}"])
             self.node.qmemory.ports[f"qin{i}"].bind_input_handler(measure_qubit)
-            yield self.await_port_input(self.node.ports[self.q_port])
+            yield self.await_port_input(self.node.ports[self.q_port]) | self.await_timer(1)
 
         # All qubits arrived, send bases
         self.node.ports[self.c_port].tx_output(bases)
@@ -203,7 +204,8 @@ class QubitConnection(Connection):
         super().__init__(name=name)
         error_models = {'quantum_noise_model': DephaseNoiseModel(dephase_rate=dephase_rate,
                                                                  time_independent=False),
-                        'delay_model': FibreDelayModel(length=length)
+                        'delay_model': FibreDelayModel(length=length),
+                        # 'quantum_loss_model': FibreLossModel()
                         }
         q_channel = QuantumChannel(name='q_channel',
                                    length=length,
@@ -245,8 +247,14 @@ def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, 
     if t_time is None:
         t_time = {'T1': 10001, 'T2': 10000}
 
+    global bob_keys, alice_keys
+    bob_keys = []
+    alice_keys = []
+
+    # ns.logger.setLevel(1)
     for _ in range(runs):
         ns.sim_reset()
+
         n = generate_network(fibre_length, dephase_rate, key_size, t_time, q_source_probs)
         node_a = n.get_node("alice")
         node_b = n.get_node("bob")
@@ -260,7 +268,6 @@ def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, 
 
     def keys_match(key1, key2):
         if len(key1) != len(key2):
-            print('this', len(key1), len(key2))
             return False
 
         for i in range(len(key1)):
@@ -269,7 +276,6 @@ def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, 
         return True
 
     _stats = {'MISMATCHED_KEYS': 0, 'MATCHED_KEYS': 0}
-    print(len(bob_keys), len(alice_keys))
     for i, bob_key in enumerate(bob_keys):
         alice_key = alice_keys[i]
         if not keys_match(alice_key, bob_key):
@@ -279,10 +285,34 @@ def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, 
     return _stats
 
 
+def plot_fibre_length_experiment():
+    lengths = np.linspace(100, 1000, 4)
+    phases = np.linspace(0, 0.5, 4)
+    runs = 500
+    for phase in phases:
+        data = []
+        for length in lengths:
+            print(f'Running l={length}, p={phase}')
+            ns.sim_reset()
+            data.append(run_experiment(fibre_length=length,
+                                       dephase_rate=phase,
+                                       key_size=50,
+                                       runs=runs,
+                                       t_time={'T1': 11, 'T2': 10},
+                                       q_source_probs=[1., 0.]))
+        correct_keys = [d['MATCHED_KEYS'] / runs for d in data]
+        # print(data)
+        plt.plot([l / 1000 for l in lengths], correct_keys,
+                 marker='.',
+                 linestyle='solid',
+                 label=f'Dephase Rate={phase}')
+        plt.legend()
+        plt.title('Key Distribution Efficiency Over Fibre')
+        plt.ylim(0, 1.1)
+        plt.xlabel('Length (km)')
+        plt.ylabel('Percentage of correctly transmitted keys')
+    plt.show()
+
+
 if __name__ == '__main__':
-    print(run_experiment(fibre_length=1e2,
-                         dephase_rate=0,
-                         key_size=10,
-                         runs=100,
-                         t_time={'T1': 1000, 'T2': 999},
-                         q_source_probs=[1., 0.]))
+    plot_fibre_length_experiment()
