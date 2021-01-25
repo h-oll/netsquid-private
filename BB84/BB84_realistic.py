@@ -82,7 +82,7 @@ class KeyReceiverProtocol(NodeProtocol):
             # Await a qubit from Alice
             self.node.ports[self.q_port].forward_input(self.node.qmemory.ports[f"qin{i}"])
             self.node.qmemory.ports[f"qin{i}"].bind_input_handler(measure_qubit)
-            yield self.await_port_input(self.node.ports[self.q_port]) | self.await_timer(1)
+            yield self.await_port_input(self.node.ports[self.q_port])
 
         # All qubits arrived, send bases
         self.node.ports[self.c_port].tx_output(bases)
