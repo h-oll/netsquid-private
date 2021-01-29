@@ -78,11 +78,15 @@ class KeyReceiverProtocol(NodeProtocol):
             self.node.qmemory.set_program_done_callback(record_measurement, measure_program=measure_program, once=False)
             self.node.qmemory.execute_program(measure_program, qubit_mapping=[i])
 
+        delay_timer = 200000000
         for i in range(self.key_size):
             # Await a qubit from Alice
             self.node.ports[self.q_port].forward_input(self.node.qmemory.ports[f"qin{i}"])
             self.node.qmemory.ports[f"qin{i}"].bind_input_handler(measure_qubit)
-            yield self.await_port_input(self.node.ports[self.q_port])
+            yield self.await_port_input(self.node.ports[self.q_port]) | self.await_timer(delay_timer)
+
+        # Not sure why this timer has to have a huge number...
+        yield self.await_program(self.node.qmemory) | self.await_timer(delay_timer)
 
         # All qubits arrived, send bases
         self.node.ports[self.c_port].tx_output(bases)
@@ -93,7 +97,8 @@ class KeyReceiverProtocol(NodeProtocol):
         final_key = []
 
         for i in matched_indices:
-            final_key.append(results[i])
+            if i < len(results):
+                final_key.append(results[i])
 
         self.key = final_key
         global bob_keys
@@ -200,12 +205,12 @@ def create_processor(dephase_rate, t_times, memory_size, add_qsource=False, q_so
 
 
 class QubitConnection(Connection):
-    def __init__(self, length, dephase_rate, name='QubitConn'):
+    def __init__(self, length, dephase_rate, loss=(0, 0), name='QubitConn'):
         super().__init__(name=name)
         error_models = {'quantum_noise_model': DephaseNoiseModel(dephase_rate=dephase_rate,
                                                                  time_independent=False),
                         'delay_model': FibreDelayModel(length=length),
-                        # 'quantum_loss_model': FibreLossModel()
+                        'quantum_loss_model': FibreLossModel(p_loss_init=loss[0], p_loss_length=loss[1])
                         }
         q_channel = QuantumChannel(name='q_channel',
                                    length=length,
@@ -216,17 +221,20 @@ class QubitConnection(Connection):
                               forward_input=[('A', 'send')])
 
 
-def generate_network(node_distance=1e3, dephase_rate=0.2, key_size=15, t_time={'T1': 11, 'T2': 10},
-                     q_source_probs=[1., 0.]):
+def generate_network(node_distance=1e3, dephase_rate=0.2, key_size=15, t_time=None,
+                     q_source_probs=(1., 0.), loss=(0, 0)):
     """
     Generate the network. For BB84, we need a quantum and classical channel.
     """
+    if t_time is None:
+        t_time = {'T1': 11, 'T2': 10}
+
     network = Network("BB84 Network")
     alice = Node("alice", qmemory=create_processor(dephase_rate, t_time, key_size, add_qsource=True,
                                                    q_source_probs=q_source_probs))
     bob = Node("bob", qmemory=create_processor(dephase_rate, t_time, key_size))
     network.add_nodes([alice, bob])
-    q_conn = QubitConnection(length=node_distance, dephase_rate=dephase_rate)
+    q_conn = QubitConnection(length=node_distance, dephase_rate=dephase_rate, loss=loss)
     network.add_connection(alice,
                            bob,
                            label='q_chan',
@@ -243,7 +251,7 @@ def generate_network(node_distance=1e3, dephase_rate=0.2, key_size=15, t_time={'
     return network
 
 
-def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, q_source_probs=[1., 0.]):
+def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, q_source_probs=(1., 0.), loss=(0, 0)):
     if t_time is None:
         t_time = {'T1': 10001, 'T2': 10000}
 
@@ -255,7 +263,7 @@ def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, 
     for _ in range(runs):
         ns.sim_reset()
 
-        n = generate_network(fibre_length, dephase_rate, key_size, t_time, q_source_probs)
+        n = generate_network(fibre_length, dephase_rate, key_size, t_time, q_source_probs, loss)
         node_a = n.get_node("alice")
         node_b = n.get_node("bob")
         p1 = KeySenderProtocol(node_a, key_size=key_size)
@@ -314,5 +322,45 @@ def plot_fibre_length_experiment():
     plt.show()
 
 
+def plot_loss_experiment():
+    lengths = np.linspace(0, 10, 6)
+    losses = np.linspace(0, 0.01, 5)
+    runs = 50
+    for loss in losses:
+        data = []
+        for length in lengths:
+            print(f'Running l={length}, p_loss={loss}')
+            ns.sim_reset()
+            data.append(run_experiment(fibre_length=length,
+                                       dephase_rate=0,
+                                       key_size=25,
+                                       runs=runs,
+                                       t_time={'T1': 11, 'T2': 10},
+                                       q_source_probs=[1., 0.],
+                                       loss=(loss, loss)),
+                        )
+        correct_keys = [d['MATCHED_KEYS'] / runs for d in data]
+        print(correct_keys)
+        # print(data)
+        plt.plot([l / 1000 for l in lengths], correct_keys,
+                 marker='.',
+                 linestyle='solid',
+                 label=f'Loss Rate={loss}')
+        plt.legend()
+        plt.title('Key Distribution Efficiency Over Fibre')
+        plt.ylim(0, 1.1)
+        plt.xlabel('Length (km)')
+        plt.ylabel('Percentage of correctly transmitted keys')
+    plt.show()
+
+
 if __name__ == '__main__':
-    plot_fibre_length_experiment()
+    # plot_fibre_length_experiment()
+    plot_loss_experiment()
+    # print(run_experiment(fibre_length=100,
+    #                      dephase_rate=0,
+    #                      key_size=20,
+    #                      runs=100,
+    #                      t_time={'T1': 11, 'T2': 10},
+    #                      q_source_probs=[1., 0.],
+    #                      loss=(0.000005, 0.000005)))
