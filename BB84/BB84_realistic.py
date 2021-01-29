@@ -78,6 +78,7 @@ class KeyReceiverProtocol(NodeProtocol):
             self.node.qmemory.set_program_done_callback(record_measurement, measure_program=measure_program, once=False)
             self.node.qmemory.execute_program(measure_program, qubit_mapping=[i])
 
+        # Not sure why this timer has to have a huge number...
         delay_timer = 200000000
         for i in range(self.key_size):
             # Await a qubit from Alice
@@ -85,9 +86,7 @@ class KeyReceiverProtocol(NodeProtocol):
             self.node.qmemory.ports[f"qin{i}"].bind_input_handler(measure_qubit)
             yield self.await_port_input(self.node.ports[self.q_port]) | self.await_timer(delay_timer)
 
-        # Not sure why this timer has to have a huge number...
         yield self.await_program(self.node.qmemory) | self.await_timer(delay_timer)
-
         # All qubits arrived, send bases
         self.node.ports[self.c_port].tx_output(bases)
 
@@ -293,10 +292,9 @@ def run_experiment(fibre_length, dephase_rate, key_size, t_time=None, runs=100, 
     return _stats
 
 
-def plot_fibre_length_experiment():
+def plot_fibre_length_experiment(runs=100):
     lengths = np.linspace(100, 1000, 4)
     phases = np.linspace(0, 0.5, 4)
-    runs = 500
     for phase in phases:
         data = []
         for length in lengths:
@@ -309,7 +307,6 @@ def plot_fibre_length_experiment():
                                        t_time={'T1': 11, 'T2': 10},
                                        q_source_probs=[1., 0.]))
         correct_keys = [d['MATCHED_KEYS'] / runs for d in data]
-        # print(data)
         plt.plot([l / 1000 for l in lengths], correct_keys,
                  marker='.',
                  linestyle='solid',
@@ -322,10 +319,9 @@ def plot_fibre_length_experiment():
     plt.show()
 
 
-def plot_loss_experiment():
+def plot_loss_experiment(runs=100):
     lengths = np.linspace(0, 10, 6)
     losses = np.linspace(0, 0.01, 5)
-    runs = 50
     for loss in losses:
         data = []
         for length in lengths:
@@ -340,8 +336,6 @@ def plot_loss_experiment():
                                        loss=(loss, loss)),
                         )
         correct_keys = [d['MATCHED_KEYS'] / runs for d in data]
-        print(correct_keys)
-        # print(data)
         plt.plot([l / 1000 for l in lengths], correct_keys,
                  marker='.',
                  linestyle='solid',
@@ -357,6 +351,7 @@ def plot_loss_experiment():
 if __name__ == '__main__':
     # plot_fibre_length_experiment()
     plot_loss_experiment()
+
     # print(run_experiment(fibre_length=100,
     #                      dephase_rate=0,
     #                      key_size=20,
