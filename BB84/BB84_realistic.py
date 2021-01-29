@@ -333,7 +333,7 @@ def plot_loss_experiment(runs=100):
                                        runs=runs,
                                        t_time={'T1': 11, 'T2': 10},
                                        q_source_probs=[1., 0.],
-                                       loss=(loss, loss)),
+                                       loss=(0, loss)),
                         )
         correct_keys = [d['MATCHED_KEYS'] / runs for d in data]
         plt.plot([l / 1000 for l in lengths], correct_keys,
