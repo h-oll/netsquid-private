@@ -1,3 +1,5 @@
+import time
+
 import netsquid as ns
 import netsquid.components.instructions as instr
 import numpy as np
@@ -348,9 +350,41 @@ def plot_loss_experiment(runs=100):
     plt.show()
 
 
+def plot_key_length_vs_length(runs=100):
+    lengths = np.linspace(0, 10, 5)
+    sizes = np.linspace(15, 100, 4, dtype=int)
+    for size in sizes:
+        data = []
+        for length in lengths:
+            print(f'Running l={length}, size={size}')
+            ns.sim_reset()
+            data.append(run_experiment(fibre_length=length,
+                                       dephase_rate=0,
+                                       key_size=size,
+                                       runs=runs,
+                                       t_time={'T1': 11, 'T2': 10},
+                                       q_source_probs=[1., 0.],
+                                       loss=(0, 0.01)),
+                        )
+        correct_keys = [d['MATCHED_KEYS'] / runs for d in data]
+        plt.plot([l / 1000 for l in lengths], correct_keys,
+                 marker='.',
+                 linestyle='solid',
+                 label=f'Key Size={size}')
+        plt.legend()
+        plt.title('Key Distribution Efficiency Over Fibre')
+        plt.ylim(0, 1.1)
+        plt.xlabel('Length (km)')
+        plt.ylabel('Percentage of correctly transmitted keys')
+    plt.show()
+
+
 if __name__ == '__main__':
+    start = time.time()
     # plot_fibre_length_experiment()
-    plot_loss_experiment()
+    # plot_loss_experiment(runs=300)
+    plot_key_length_vs_length(runs=200)
+    print(f'Finished in {time.time() - start} seconds.')
 
     # print(run_experiment(fibre_length=100,
     #                      dephase_rate=0,
