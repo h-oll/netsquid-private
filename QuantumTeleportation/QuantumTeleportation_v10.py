@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[47]:
+# In[1]:
 
 
 import numpy as np
@@ -28,32 +28,7 @@ from netsquid.components.models.qerrormodels import FibreLossModel
 from netsquid.components.models.delaymodels import FibreDelayModel
 
 
-# In[48]:
-
-
-'''
-input:
-    Pg: A quantum program (QuantumProgram)
-output:
-    resList: A list of outputs from the given quantum program, 
-    also sorted by key.(list of int)
-'''
-
-def getPGoutput(Pg):
-    resList=[]
-    tempDict=Pg.output
-    if "last" in tempDict:
-        del tempDict["last"]
-        
-    # sort base on key
-    newDict=sorted({int(k) : v for k, v in tempDict.items()}.items())
-    
-    #take value
-    for k, v in newDict:
-        resList.append(v[0])
-    return resList
-
-
+# In[2]:
 
 
 class TP_SenderTeleport(QuantumProgram):
@@ -118,7 +93,7 @@ def ProgramFail():
     print("A programe failed!!")
 
 
-# In[49]:
+# In[46]:
 
 
 class QuantumTeleportationSender(NodeProtocol):
@@ -139,23 +114,20 @@ class QuantumTeleportationSender(NodeProtocol):
     def run(self):
         
         # Entangle the two qubits and measure
-        self.myTP_SenderTeleport=TP_SenderTeleport()
-        self.processor.execute_program(self.myTP_SenderTeleport,qubit_mapping=[0,1])
-        self.processor.set_program_done_callback(self.getPGoutput_Sender,once=True)
+        myTP_SenderTeleport=TP_SenderTeleport()
+        self.processor.execute_program(myTP_SenderTeleport,qubit_mapping=[0,1])
         self.processor.set_program_fail_callback(ProgramFail,once=True)
         
         yield self.await_program(processor=self.processor)
-        
+        self.measureRes=[myTP_SenderTeleport.output['0'][0],myTP_SenderTeleport.output['1'][0]]
+
         # Send results to Receiver
         self.node.ports[self.portNameCS1].tx_output(self.measureRes)
         
         
-        
-    def getPGoutput_Sender(self):
-        self.measureRes=getPGoutput(self.myTP_SenderTeleport)
 
 
-# In[50]:
+# In[47]:
 
 
 class QuantumTeleportationReceiver(NodeProtocol):
@@ -175,11 +147,11 @@ class QuantumTeleportationReceiver(NodeProtocol):
         port=self.node.ports[self.portNameCR1]
         yield self.await_port_input(port)
         res=port.rx_input().items
-        #print("R get results:", res)
+        print("R get results:", res)
         
         # edit EPR2 according to res
-        self.myTP_ReceiverAdjust=TP_ReceiverAdjust(res)
-        self.processor.execute_program(self.myTP_ReceiverAdjust,qubit_mapping=[0])
+        myTP_ReceiverAdjust=TP_ReceiverAdjust(res)
+        self.processor.execute_program(myTP_ReceiverAdjust,qubit_mapping=[0])
         self.processor.set_program_done_callback(self.show_state,once=True)
         self.processor.set_program_fail_callback(ProgramFail,once=True)
         
@@ -189,7 +161,7 @@ class QuantumTeleportationReceiver(NodeProtocol):
         print("final state:\n",tmp.qstate.dm)
 
 
-# In[51]:
+# In[48]:
 
 
 def run_Teleport_sim(runtimes=1,fibre_len=10**-9,memNoiseMmodel=None,processorNoiseModel=None
@@ -240,6 +212,9 @@ def run_Teleport_sim(runtimes=1,fibre_len=10**-9,memNoiseMmodel=None,processorNo
         operate(epr1, H)
         operate([epr1, epr2], CNOT)
         
+        # make oriQubit
+        operate(oriQubit, H)
+        
         
         myQT_Sender = QuantumTeleportationSender(node=nodeSender,
             processor=processorSender,SendQubit=oriQubit,EPR_1=epr1)
@@ -256,10 +231,16 @@ def run_Teleport_sim(runtimes=1,fibre_len=10**-9,memNoiseMmodel=None,processorNo
     return 0
 
 
-# In[52]:
+# In[68]:
 
 
 run_Teleport_sim()
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
